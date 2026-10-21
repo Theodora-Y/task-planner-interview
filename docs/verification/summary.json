@@ -140,5 +140,57 @@
       "20261021133000_quota_reservation"
     ]
   },
-  "implementationCommit": "da266a9146fc173213840f87328c36dafdc47f1c"
+  "implementationCommit": "da266a9146fc173213840f87328c36dafdc47f1c",
+  "reviewFollowup": {
+    "recordedAt": "2026-10-21T22:32:10.6306155+08:00",
+    "baseCommit": "c1f2976a6e531175bb8d409337ac3aac040730da",
+    "scope": "Review follow-up: confirmed applicant details and actual auth-refresh failure/page guard fix; psql changes withdrawn at user request; core quota service unchanged",
+    "service": {
+      "tests": 17,
+      "failedTests": 0,
+      "log": "test-results/quota/review/service.log",
+      "passedTests": 17,
+      "passed": true
+    },
+    "browser": {
+      "passed": true,
+      "browser": "Chromium/Edge 155.0.4283.62",
+      "startedAt": "2026-10-21T14:30:04.041Z",
+      "finishedAt": "2026-10-21T14:30:44.906Z",
+      "steps": [
+        {"id":"AC12-AC24-unauthenticated-guard","passed":true,"redirectedToLogin":true,"protectedRoutes":["/","/demo-app"],"status":401,"modelCalls":0,"deltaR":0},
+        {"id":"AC01-UI","passed":true,"C":3,"emptyTaskButtonDisabled":true},
+        {"id":"AC02-UI","passed":true,"status":200,"before":{"C":3,"R":0},"after":{"C":2,"R":1},"deltaR":1,"modelCalls":1},
+        {"id":"prepare-last-credit","passed":true,"status":200,"before":{"C":2,"R":1},"after":{"C":1,"R":2},"deltaR":1,"modelCalls":1},
+        {"id":"AC05-UI","passed":true,"status":502,"before":{"C":1,"R":2},"after":{"C":1,"R":2},"deltaR":0,"modelCalls":1},
+        {"id":"AC03-AC06-UI","passed":true,"status":200,"before":{"C":1,"R":2},"after":{"C":0,"R":3},"deltaR":1,"modelCalls":1},
+        {"id":"AC04-AC13-stale-direct-request","passed":true,"status":402,"before":{"C":0,"R":3},"after":{"C":0,"R":3},"deltaR":0,"modelCalls":0},
+        {"id":"AC12-UI","passed":true,"invalidHoursDisabled":true},
+        {"id":"AC24-success-auth-refresh-failed","passed":true,"status":200,"before":{"C":3,"R":0},"after":{"C":2,"R":1},"deltaR":1,"modelCalls":1,"generationRequests":1,"failedAuthResponses":24,"successScheduleRetained":true,"quotaReadErrorVisible":true},
+        {"id":"AC24-auth-refresh-recovered","passed":true,"before":{"C":2,"R":1},"after":{"C":2,"R":1},"deltaR":0,"modelCalls":0,"generationRequestsAfterRecovery":1,"displayedCredits":2},
+        {"id":"AC10-UI-injected","passed":true,"status":500,"before":{"C":2,"R":1},"after":{"C":2,"R":1},"deltaR":0,"modelCalls":0},
+        {"id":"AC18-UI-injected","passed":true,"status":503,"before":{"C":2,"R":1},"after":{"C":2,"R":1},"deltaR":0,"modelCalls":0},
+        {"id":"AC15-UI-injected","passed":true,"status":503,"before":{"C":2,"R":1},"after":{"C":2,"R":1},"deltaR":0,"modelCalls":0},
+        {"id":"non-json-error-UI-injected","passed":true,"status":500,"before":{"C":2,"R":1},"after":{"C":2,"R":1},"deltaR":0,"modelCalls":0},
+        {"id":"AC24-auth-rejected-UI-injected","passed":true,"cachedViewBlocked":true,"noRedirectLoop":true,"before":{"C":2,"R":1},"after":{"C":2,"R":1},"modelCalls":0,"deltaR":0}
+      ],
+      "pageErrors": []
+    },
+    "checks": [
+      {"log":"test-results/quota/review/compile.log","exitCode":0,"command":"wasp compile"},
+      {"log":"test-results/quota/review/typescript-src.log","exitCode":0,"command":"npx tsc --project tsconfig.src.json --noEmit"},
+      {"log":"test-results/quota/review/typescript-wasp.log","exitCode":0,"command":"npx tsc --project tsconfig.wasp.json --noEmit"}
+    ],
+    "http": {
+      "reason": "No quota-service, model, schema, migration, dependency or HTTP-operation changes; original 35-case evidence retained",
+      "rerun": false
+    },
+    "submission": {
+      "deadline": "2026-10-23T17:38:00+08:00",
+      "prPublished": false,
+      "direction": "技术",
+      "forkCreated": false,
+      "notificationTime": "2026-10-21T17:38:00+08:00"
+    }
+  }
 }

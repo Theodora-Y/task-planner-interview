@@ -1,4 +1,5 @@
 import { useAuth } from "wasp/client/auth";
+import { Navigate } from "react-router";
 import { type Task } from "wasp/entities";
 
 import {
@@ -32,6 +33,21 @@ import type {
 } from "./schedule";
 
 export function DemoAppPage() {
+  const auth = useAuth();
+  const authStatus = (auth.error as { statusCode?: number } | null)?.statusCode;
+  const authRejected = authStatus === 401 || authStatus === 403;
+  if (!auth.data && !auth.isLoading && !auth.isError) {
+    return <Navigate to="/login" replace />;
+  }
+  if (!auth.data || authRejected) {
+    return <div className="p-6" role="status">
+      {auth.isError
+        ? <><p>{authRejected ? "登录状态已失效，请退出后重新登录。" : "暂时无法确认登录状态，请刷新后重试。"}</p><Button type="button" onClick={() => void auth.refetch()}>刷新登录状态</Button></>
+        : "正在确认登录状态…"}
+    </div>;
+  }
+  // Cached identity preserves the successful view during refresh errors only.
+  // Every operation still authenticates on the server; stale credits never admit a request.
   return (
     <div className="py-10 lg:mt-10">
       <div className="mx-auto max-w-7xl px-6 lg:px-8">

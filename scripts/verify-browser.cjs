@@ -83,6 +83,24 @@ const report = { startedAt: new Date().toISOString(), steps: [], pageErrors: [],
   }
 
   try {
+    const anonymous = await browser.newContext();
+    try {
+      const anonymousPage = await anonymous.newPage();
+      const offset = fs.statSync(logPath).size;
+      for (const route of ["/", "/demo-app"]) {
+        await anonymousPage.goto(frontend + route, { waitUntil: "networkidle" });
+        await anonymousPage.waitForURL("**/login");
+      }
+      const denied = await anonymous.request.post(api + "/operations/generate-plan", { data: { json: { hours: 8 } } });
+      assert.equal(denied.status(), 401);
+      await delay(100);
+      const log = fs.readFileSync(logPath).subarray(offset).toString("utf8");
+      const modelCalls = [...log.matchAll(/\{"event":"mock-ai\.started","callId":"([^"]+)"\}/g)].length;
+      assert.equal(modelCalls, 0);
+      report.steps.push({ id: "AC12-AC24-unauthenticated-guard", passed: true, redirectedToLogin: true, protectedRoutes: ["/", "/demo-app"], status: 401, modelCalls: 0, deltaR: 0 });
+      console.log("PASS AC12-AC24-unauthenticated-guard");
+    } finally { await anonymous.close(); }
+
     const account = { username: "browser_" + Date.now(), password: "Test_" + randomBytes(18).toString("hex") };
     await page.goto(frontend + "/signup", { waitUntil: "networkidle" });
     await page.locator('input[name="username"]').fill(account.username);
@@ -146,7 +164,85 @@ const report = { startedAt: new Date().toISOString(), steps: [], pageErrors: [],
     await page.getByRole("alert").getByText("可用时长须为 1～24 小时。").waitFor();
     await page.locator("#todays-hours").fill("8");
     report.steps.push({ id: "AC12-UI", passed: true, invalidHoursDisabled: true });
-    await capture("ui-error-fixture-success", () => generate(), { status: 200, C: 2, R: 1, M: 1 });
+    // Fail only the page's auth refresh. Independent API reads still observe
+    // the real committed balance/result; generate-plan remains untouched.
+    const token = await page.evaluate(() => JSON.parse(localStorage.getItem("wasp:sessionId")));
+    const readServerState = async () => {
+      const headers = { Authorization: "Bearer " + token };
+      const me = await context.request.get(api + "/auth/me", { headers });
+      const results = await context.request.post(api + "/operations/get-plan-results", {
+        headers, data: { json: null, meta: { values: ["undefined"], v: 1 } },
+      });
+      assert.equal(me.status(), 200);
+      assert.equal(results.status(), 200);
+      return { C: (await me.json()).json.credits, R: (await results.json()).json.length };
+    };
+    const beforeRefreshFailure = await readServerState();
+    const refreshLogOffset = fs.statSync(logPath).size;
+    let generationRequests = 0;
+    let failedAuthResponses = 0;
+    const countGeneration = (request) => {
+      if (request.url() === api + "/operations/generate-plan" && request.method() === "POST") generationRequests++;
+    };
+    const blockAuth = async (route) => {
+      failedAuthResponses++;
+      await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "Auth refresh probe" }) });
+    };
+    const countModelStarts = () => {
+      const log = fs.readFileSync(logPath).subarray(refreshLogOffset).toString("utf8");
+      return [...log.matchAll(/\{"event":"mock-ai\.started","callId":"([^"]+)"\}/g)].length;
+    };
+    page.on("request", countGeneration);
+    await page.route(api + "/auth/me", blockAuth);
+    try {
+      const pending = page.waitForResponse((response) =>
+        response.url() === api + "/operations/generate-plan" && response.request().method() === "POST");
+      await page.getByTestId("generate-schedule-button").click();
+      const generated = await pending;
+      assert.equal(generated.status(), 200);
+      await page.waitForFunction(() =>
+        document.querySelector('[data-testid="plan-feedback"]')?.textContent?.includes("生成成功") &&
+        !document.querySelector('[data-testid="generate-schedule-button"]')?.textContent?.includes("生成中"),
+        undefined, { timeout: 90000 });
+      await page.getByRole("button", { name: "额度读取失败，点击刷新", exact: true }).waitFor();
+      assert.equal(await page.getByTestId("schedule").isVisible(), true);
+      assert.equal(await page.getByTestId("schedule-heading").innerText(), "本次日程");
+      assert.match(await page.getByTestId("plan-feedback").innerText(), /生成成功，已消费 1 个额度/);
+      assert.equal(await page.getByTestId("generate-schedule-button").isDisabled(), true);
+      const committed = await readServerState();
+      assert.deepEqual(beforeRefreshFailure, { C: 3, R: 0 });
+      assert.deepEqual(committed, { C: 2, R: 1 });
+      assert.equal(countModelStarts(), 1);
+      assert.equal(generationRequests, 1);
+      assert.ok(failedAuthResponses > 0);
+      report.steps.push({
+        id: "AC24-success-auth-refresh-failed", passed: true, status: 200,
+        before: beforeRefreshFailure, after: committed, deltaR: 1, modelCalls: 1,
+        generationRequests, failedAuthResponses, successScheduleRetained: true, quotaReadErrorVisible: true,
+      });
+      console.log("PASS AC24-success-auth-refresh-failed");
+      await page.screenshot({ path: path.join(out, "success-auth-refresh-failed.png"), fullPage: true });
+    } finally {
+      await page.unroute(api + "/auth/me", blockAuth);
+    }
+    try {
+      await page.getByRole("button", { name: "额度读取失败，点击刷新", exact: true }).click();
+      await credits(page, 2);
+      assert.equal(await page.getByTestId("generate-schedule-button").isEnabled(), true);
+      assert.equal(await page.getByTestId("schedule-heading").innerText(), "本次日程");
+      assert.match(await page.getByTestId("plan-feedback").innerText(), /生成成功/);
+      assert.deepEqual(await readServerState(), { C: 2, R: 1 });
+      assert.equal(generationRequests, 1);
+      assert.equal(countModelStarts(), 1);
+      report.steps.push({
+        id: "AC24-auth-refresh-recovered", passed: true,
+        before: { C: 2, R: 1 }, after: { C: 2, R: 1 }, deltaR: 0, modelCalls: 0,
+        generationRequestsAfterRecovery: generationRequests, displayedCredits: 2,
+      });
+      console.log("PASS AC24-auth-refresh-recovered");
+    } finally {
+      page.off("request", countGeneration);
+    }
 
     for (const probe of [
       { id: "AC10-UI-injected", status: 500, code: "SAVE_FAILED", text: /保存失败，额度已释放/ },
@@ -176,6 +272,25 @@ const report = { startedAt: new Date().toISOString(), steps: [], pageErrors: [],
       await page.unroute(api + "/operations/generate-plan");
     }
     await page.screenshot({ path: path.join(out, "unknown-outcome.png"), fullPage: true });
+    const beforeAuthRejection = await state();
+    const rejectionOffset = fs.statSync(logPath).size;
+    await page.route(api + "/auth/me", (route) => route.fulfill({
+      status: 403, contentType: "application/json", body: JSON.stringify({ message: "Auth rejection probe" }),
+    }));
+    try {
+      await page.getByRole("button", { name: "刷新额度", exact: true }).click();
+      await page.getByText("登录状态已失效，请退出后重新登录。", { exact: true }).waitFor();
+      assert.equal(await page.getByTestId("generate-schedule-button").count(), 0);
+      assert.ok(page.url().endsWith("/demo-app"), "auth rejection must not loop between login and demo");
+    } finally { await page.unroute(api + "/auth/me"); }
+    await page.getByRole("button", { name: "额度读取失败，点击刷新", exact: true }).click();
+    await credits(page, 2);
+    assert.deepEqual(await state(), beforeAuthRejection);
+    const rejectionLog = fs.readFileSync(logPath).subarray(rejectionOffset).toString("utf8");
+    assert.equal([...rejectionLog.matchAll(/\{"event":"mock-ai\.started","callId":"([^"]+)"\}/g)].length, 0);
+    report.steps.push({ id: "AC24-auth-rejected-UI-injected", passed: true, cachedViewBlocked: true,
+      noRedirectLoop: true, before: beforeAuthRejection, after: beforeAuthRejection, modelCalls: 0, deltaR: 0 });
+    console.log("PASS AC24-auth-rejected-UI-injected");
     assert.deepEqual(report.pageErrors, []);
     report.passed = true;
   } catch (error) {
