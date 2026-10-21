@@ -1,21 +1,29 @@
 # 额度功能运行与验证
 
-2026-10-21：额度功能已实现并完成本地验收。业务规则与边界见 [SPEC](../SPEC.md)，逐项实际结果见 [VERIFICATION](VERIFICATION.md)。本机环境、启动/停止脚本见 [BASELINE_RUN](BASELINE_RUN.md)；无需重新安装环境或升级依赖。
+2026-10-21：额度功能已实现并完成本地验收。业务规则与边界见 [SPEC](../SPEC.md)，逐项实际结果见 [VERIFICATION](VERIFICATION.md)。新环境从 README 和下方仓库通用命令开始；本机环境与便捷脚本见 [BASELINE_RUN](BASELINE_RUN.md)，不要重复搭建已完成的本机环境。
 
-## 1. 更新已有开发数据库
+## 1. 从仓库运行与停止
 
-在 Ubuntu 正式源码目录执行（本机已执行成功，不必重复建库）：
+新环境先按 [README](../README.md) 准备 Node24（最低24.14.1）、Wasp0.25.0、本地配置和依赖；在 Linux 文件系统中的项目根目录执行下列命令，不需要本机专用的 env.sh/start.sh。已有 .env 文件不要被示例覆盖。
+
+数据库可在独立终端执行 `wasp start db`，或按 README 配置自备 PostgreSQL。数据库就绪后：
 
 ```sh
-source /home/ying/实习小作业/env.sh
-cd /home/ying/实习小作业/task-planner-interview
 wasp compile
 wasp db migrate-dev
+mkdir -p test-results/quota
+wasp start 2>&1 | tee test-results/quota/server.log
 ```
 
-新增迁移为 `20261021133000_quota_reservation`；保留旧用户、任务、结果和余额，旧结果的 attempt 关联为 NULL。若历史余额小于 0，迁移拒绝执行，需要先人工核实，不会自动改成 0。
+前台应用在当前终端 Ctrl+C 停止；重新执行最后一条命令即可再次启动。Docker开发数据库在其终端停止；自备数据库按自己的服务方式管理。首次迁移两条记录，日常重启不必重复安装或迁移。
 
-仍使用现有 `.env.server` 和 PostgreSQL 55432。本机 Windows PowerShell 日常操作：
+新增迁移为 `20261021133000_quota_reservation`；保留旧用户、任务、结果和余额，旧结果的 attempt 关联为 NULL。若历史余额小于0，迁移拒绝执行，需要先人工核实，不会自动改成0。
+
+默认前端 [localhost:3000](http://localhost:3000)，API3001；以实际启动输出为准。新注册账号3个可用额度。生成时暂占1个，成功后消费；包含 `[fail]` 的任务会明确失败并释放，删除该任务后可继续。没有充值入口。
+
+### 本机已验证安排（可选便捷方式）
+
+本机正式源码为 `/home/ying/实习小作业/task-planner-interview`，Node24.14.1、Wasp0.25.0、PostgreSQL16.15/55432，配置已存在。新Ubuntu终端可 `source /home/ying/实习小作业/env.sh`。以下外部脚本仅是本机便捷方式，不随仓库提交，也不是接手者运行的前提：
 
 ```powershell
 wsl -d Ubuntu -- bash /home/ying/实习小作业/start.sh
@@ -23,9 +31,11 @@ wsl -d Ubuntu -- bash /home/ying/实习小作业/status.sh
 wsl -d Ubuntu -- bash /home/ying/实习小作业/stop.sh
 ```
 
-前端 [localhost:3000](http://localhost:3000)，API 3001。新注册账号 3 个可用额度。生成时暂占 1 个，成功后消费；添加包含 `[fail]` 的任务会明确失败并释放，删除该任务后可继续。处理中看到 0 可能是暂占，完成后点击“刷新额度”。没有充值入口。
+本机工具及原始环境证据见 BASELINE_RUN；后续复验可以使用上述既有后台服务，避免再开第二个 wasp start。
 
 ## 2. 真实 PostgreSQL 服务测试（S）
+
+S/H脚本直接读取仓库根目录 `.env.server` 中的 DATABASE_URL，需填写被测API实际使用的连接；示例文件只有说明，不能当作已配置连接。使用Wasp管理的数据库时同样填入该实例的实际连接信息；不要把密码提交Git。
 
 先编译生成当前 Prisma 客户端，再创建独立测试库：
 
@@ -49,9 +59,11 @@ S 覆盖真实事务、模型调用、SQL 错误回滚、提交成功后丢失�
 ```sh
 node scripts/verify-quota.mjs \
   --base-url http://localhost:3001 \
-  --server-log /home/ying/实习小作业/.environment/logs/app.log \
+  --server-log test-results/quota/server.log \
   --rounds 10
 ```
+
+第1节的通用前台命令生成上述server.log。本机既有后台服务实际日志是 `/home/ying/实习小作业/.environment/logs/app.log`，初验使用该路径；复用本机后台服务时将 --server-log 替换为它。
 
 H 使用真实注册、登录、任务和生成操作。读取 `.env.server` 的 DATABASE_URL 对自己创建的账号做只读检查；**这个连接必须与 API 连接同一个数据库**，不能拿另一个测试库核对开发 API 的账号。S 的隔离库和 H 的数据库用途不同。可用 `--database-env <env文件>` 指向另一套与被测 API 一致的配置。
 

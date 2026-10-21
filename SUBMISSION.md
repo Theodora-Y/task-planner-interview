@@ -6,7 +6,7 @@
 - 通知时间：2026-10-21 17:38，北京时间（UTC+8）
 - 提交截止：2026-10-23 17:38，北京时间（收到通知后48小时）
 - 拟用 PR 标题：`技术｜郑女士｜132****3133`
-- 当前交付：本地实现与验证完成，尚未创建个人 Fork 或发布 PR
+- 当前交付：实现、验证、审查补强完成；PR材料可核对，尚未创建个人Fork、推送或发布PR
 
 ## 结果概览
 
@@ -19,6 +19,7 @@
 - [SPEC](SPEC.md)：规则、方案取舍、流程、边界、实现拆解与 AC01～AC24。
 - [quotaService](src/demo-ai-app/quotaService.ts)、[planService](src/demo-ai-app/planService.ts)：原子预占、确认、释放与异常编排。
 - [迁移](migrations/20261021133000_quota_reservation/migration.sql)、[页面](src/demo-ai-app/DemoAppPage.tsx)。
+- [PR正文草稿](docs/PR_BODY.md)：可复制的说明与验证结论。
 - [运行和重复验证](docs/QUOTA_RUN.md)：S/H/B/C 完整命令及环境前提。
 - [逐项实际验收](docs/VERIFICATION.md)、[脱敏结果摘要](docs/verification/summary.json)。
 - [数据库测试](tests/quota.integration.test.ts)、[HTTP 脚本](scripts/verify-quota.mjs)、[浏览器脚本](scripts/verify-browser.cjs)。
@@ -33,8 +34,16 @@ AC01～AC24 的命令组、前置操作、预期、实际与证据逐项列在 V
 
 ## 待办与交接
 
-设计提交为 `99cecc9994a24fbd78549f54dd2f9166a6bf2cfd`，实现提交为 `da266a9146fc173213840f87328c36dafdc47f1c`，验证记录接续其后，未重写上游历史。
+本地 Git 设计提交为 `99cecc9994a24fbd78549f54dd2f9166a6bf2cfd`，实现提交为 `da266a9146fc173213840f87328c36dafdc47f1c`，验证提交 `c1f2976`、审查修复 `2b46f01` 接续其后，未重写上游历史。
 
 服务崩溃或数据库长期不可用可能留下暂占额度，自动崩溃补偿在题目范围外；未知状态不得自动重试或无条件返还。未做真实网络断电测试和多副本 HTTP 部署；对应替代验证及边界见 VERIFICATION。
 
 身份及通知时间已由应聘者确认，公开提交仅使用上方称呼与打码手机号。仍需创建个人 Fork，并在北京时间2026-10-23 17:38前向原仓库提交 PR，标题使用 `技术｜郑女士｜132****3133`。本轮不创建或发布 PR。
+
+## PR目标核对
+
+- 目标仓库：`bybzhwbzhh88/task-planner-interview`，目标分支 `main`。本轮只读核对远端HEAD和main均为 `114aeb28f6368e96c08a25627ac094b8d102fd1b`。
+- 本地来源分支：`chore/original-baseline`；个人Fork尚未创建，暂没有来源仓库地址或origin远端。
+- 最后功能提交：`2b46f01f487be8931d468cbc2b88d1233fcad9c6`；之后仅做文档收尾，不改变被验证源码。
+- 本地先保留SPEC：`99cecc9`（2026-10-21 21:06:37+08:00，仅三份文档）是 `da266a9`（21:45:24+08:00，功能实现）的直接父提交。初稿未覆盖。
+- 发布前必须：创建个人Fork、设置其远端并推送当前分支、向上述main提交PR；提交时再次核对远端分支及北京时间2026-10-23 17:38截止。本轮不执行这些公开操作。

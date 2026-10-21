@@ -2,7 +2,7 @@
 
 判断：原实现先调用模型，再读取认证快照中的余额决定扣减，无法在调用前控制额度与并发。选用 **PostgreSQL 原子预占 + 按请求记录状态 + 短事务确认或释放**。不使用进程内队列，不把“单服务”解释为“必然只有一个 Node 业务进程”。
 
-状态：**2026-10-21，已按本设计实现并完成本地验证。** 设计提交 `99cecc9` 独立保留；本版同步实际文件、命令及验证入口。原始基线见 [BASELINE_RUN](docs/BASELINE_RUN.md)，新功能结果见 [VERIFICATION](docs/VERIFICATION.md)，不混用两轮结论。
+状态：**2026-10-21，额度实现、验证与审查补强完成，最终PR资料已整理；尚未推送或发布。** 本地设计提交 `99cecc9` 独立保留；本版同步实际文件、命令及验证入口。原始基线见 [BASELINE_RUN](docs/BASELINE_RUN.md)，新功能结果见 [VERIFICATION](docs/VERIFICATION.md)，不混用两轮结论。
 
 ## 1. 需求、现状与范围
 
@@ -178,7 +178,7 @@ AC09 的真实 HTTP 无屏障压力补测只校验：每个请求为 402 或 502
 
 ## 7. 可重复验证与当前交接
 
-完整操作、数据库保护和命令见 [QUOTA_RUN](docs/QUOTA_RUN.md)，按验收编号的预期/实际/证据见 [VERIFICATION](docs/VERIFICATION.md)。所有下面引用的新增入口均已存在并实际运行；原始大日志与截图只保存在本机，Git 内保留脱敏结果快照。
+完整操作、数据库保护和命令见 [QUOTA_RUN](docs/QUOTA_RUN.md)，按验收编号的预期/实际/证据见 [VERIFICATION](docs/VERIFICATION.md)。下列验证脚本均已存在并实际运行；server.log是接手者按QUOTA_RUN第1节启动后生成的日志示例，本机实际验收使用该文档注明的app.log；原始大日志与截图只保存在本机，Git 内保留脱敏结果快照。
 
 ### 7.1 真实 PostgreSQL 服务测试
 
@@ -192,7 +192,7 @@ npx vitest run --config vitest.server.config.ts tests/quota.integration.test.ts
 ### 7.2 真实 HTTP 与浏览器
 
 ```sh
-node scripts/verify-quota.mjs --base-url http://localhost:3001 --server-log /home/ying/实习小作业/.environment/logs/app.log --rounds 10
+node scripts/verify-quota.mjs --base-url http://localhost:3001 --server-log test-results/quota/server.log --rounds 10
 ```
 
 使用真实认证、Wasp 序列化和 operations。所有并发请求一起发起，按场景起点统计唯一 callId；准备额度的调用排除。报告同时包含状态、前后 C/P、ΔR、started/succeeded/failed；缺日志、超时、非 JSON 或断言失败非零退出。
@@ -204,13 +204,12 @@ node scripts/verify-quota.mjs --base-url http://localhost:3001 --server-log /hom
 ### 7.3 编译与类型检查
 
 ```sh
-source /home/ying/实习小作业/env.sh
 wasp compile
 npx tsc --project tsconfig.src.json --noEmit
 npx tsc --project tsconfig.wasp.json --noEmit
 ```
 
-本轮新实现三项退出码均为 0，不复用原始基线结论。真实 PostgreSQL 17/17 测试在本轮重跑通过；HTTP 35 场景为初验既有证据、本轮未重跑；浏览器补测后15步通过，包括 AC24。AC01～AC24 的实际结果与局限逐项见 VERIFICATION。
+本轮新实现三项退出码均为 0，不复用原始基线结论。最终功能提交 `2b46f01` 对应的真实 PostgreSQL 17/17 测试已通过；HTTP 35 场景为初验既有证据、本轮未重跑；浏览器补测后15步通过，包括 AC24。AC01～AC24 的实际结果与局限逐项见 VERIFICATION。
 
 ### 7.4 当前交接
 

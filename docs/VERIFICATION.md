@@ -83,3 +83,20 @@ AC24 命令仍为 QUOTA_RUN 的 B，明确预期与实际：
 psql相关建议按应聘者最新要求保持原样，新增预检和客户端说明均已撤回，未纳入提交。
 
 新增测试只注入认证刷新响应，不修改生成结果、断言或模拟模型。最终15步浏览器报告沿用原[报告入口](../test-results/quota/browser/report.json)，包含既有场景与上述四条记录；本轮数据库日志为[review/service.log](../test-results/quota/review/service.log)。三项本轮编译/类型日志位于同一review目录。脱敏摘要的reviewFollowup标明本轮结果和未重跑项，历史初验快照仍保留。
+
+## 6. 最终交付核对（2026-10-21）
+
+最后功能代码为本地 Git 提交 `2b46f01f487be8931d468cbc2b88d1233fcad9c6`。本轮只整理 README、SPEC、运行说明、提交说明与 PR 正文，源码、测试、依赖及迁移未改变，因此未重复运行业务测试。前述 S17/17、B15步和三项编译/类型检查对应这份功能源码；H35场景对应核心额度逻辑未变的初验版本，未冒称本轮重跑。
+
+实际执行的收尾检查：
+
+- `git diff --check`：通过；相对 `2b46f01` 仅有文档差异。
+- Git 历史：设计 `99cecc9` 仅含三份文档，是实现 `da266a9` 的直接父提交；上游历史保留。这里的“提交”均指本地 Git commit，不等同于 GitHub PR。
+- 静态扫描当前公开文件及本地提交历史：未发现完整手机号、私钥、常见 GitHub/npm 令牌、带密码的数据库连接；无被跟踪的生成目录、本地配置或原始测试凭据。
+- 本地文档链接全部存在；链接到 `test-results/` 的原始证据已明确标为仅本机保存，不属于 PR 文件。
+- 原始 S/B/H 报告与脱敏摘要交叉核对一致；H正式场景48个唯一callId均对应服务日志中一次started和一次succeeded/failed。
+- `git ls-remote --symref upstream HEAD refs/heads/main`：上游默认分支为main，HEAD/main均为 `114aeb28f6368e96c08a25627ac094b8d102fd1b`。
+
+本轮静态核对脚本及详细结果仅保存在被忽略的 `test-results/quota/final/`；随 Git 保留的核对摘要见 `summary.json` 的 finalDelivery。没有把静态核对写成业务复验。
+
+PR正文见 [PR_BODY](PR_BODY.md)，目标与身份见 [SUBMISSION](../SUBMISSION.md)。技术实现及材料已具备发布准备条件，但尚未创建个人Fork、推送分支或向上游main提交PR；这些公开操作本轮未执行。最终作业交付仍须在北京时间2026-10-23 17:38前完成PR提交。

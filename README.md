@@ -4,7 +4,11 @@
 
 ## 任务
 
-请阅读 [TASK.md](TASK.md)。项目中的额度处理是待改进的初始版本。
+原题见 [TASK.md](TASK.md)。本分支已完成额度处理和审查补强：先原子预占再调用模型，成功确认、失败释放；本地验证完成，尚未公开提交 PR。
+
+- [最终SPEC](SPEC.md)：规则、方案取舍与AC01～AC24。
+- [运行与重复验证](docs/QUOTA_RUN.md)、[实际验证记录](docs/VERIFICATION.md)。
+- [提交说明](SUBMISSION.md)、[可复制的PR正文](docs/PR_BODY.md)。
 
 ## 环境
 
@@ -19,7 +23,7 @@
 npm install -g @wasp.sh/wasp-cli@0.25.0
 ```
 
-在项目根目录准备本地配置，并安装依赖：
+首次在项目根目录准备本地配置并安装依赖；已有本地配置不要覆盖：
 
 ```sh
 cp .env.server.example .env.server
@@ -49,14 +53,14 @@ wasp start
 - 普通任务约 500 毫秒后返回模拟日程。
 - 添加一条包含 `[fail]` 的任务，可以让模拟接口明确返回失败；删除该任务后恢复成功场景。
 - 服务端记录 `mock-ai.started`、`mock-ai.succeeded` 和 `mock-ai.failed` 日志；同一次调用使用相同的 `callId`。
-- 运行 `wasp db studio` 可以查看数据，将测试账号的 `User.credits` 设置为 0、1 或 3。手动修改数据后刷新页面。
+- 运行 `wasp db studio` 可以查看数据，将测试账号的 `User.credits` 设置为 0、1 或 3。仅在无在途生成/预占时准备测试余额，修改后刷新页面；不要在请求执行中直接改额。
 
 ## 代码入口
 
 | 路径 | 内容 |
 | --- | --- |
 | `main.wasp.ts` | 应用与路由配置 |
-| `schema.prisma` | 用户、任务和生成结果 |
+| `schema.prisma` | 用户、任务、生成结果和额度请求状态 |
 | `src/demo-ai-app/DemoAppPage.tsx` | 任务输入和日程展示 |
 | `src/demo-ai-app/operations.ts` | 服务端操作 |
 | `src/demo-ai-app/mockAi.ts` | 本地模拟接口 |
