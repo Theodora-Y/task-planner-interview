@@ -1,6 +1,6 @@
 # 本地额度验收记录
 
-2026-10-21，Ubuntu / WSL2，Node 24.14.1、Wasp 0.25.0、PostgreSQL 16.15。**本轮本地实现与验证已完成；未发布 PR。** 原始环境基线不是本轮功能证据，仍单独保留在 [BASELINE_RUN](BASELINE_RUN.md)。
+2026-10-21，Ubuntu / WSL2，Node 24.14.1、Wasp 0.25.0、PostgreSQL 16.15。**本地实现与验证已完成；已提交 [PR #3](https://github.com/bybzhwbzhh88/task-planner-interview/pull/3)，等待仓库方评审。** 原始环境基线不是本轮功能证据，仍单独保留在 [BASELINE_RUN](BASELINE_RUN.md)。
 
 原始额度实现提交 `da266a9146fc173213840f87328c36dafdc47f1c`；设计提交 `99cecc9` 保留。后续审查补强见第5节，原始证据链接当前指向最新复验文件，初验快照保留在摘要的原字段中。
 
@@ -63,7 +63,7 @@ Wasp 客户端实际将服务端详情封装为 error.data.data，页面按生�
 - 未进行真实数据库网络故障/操作系统断电测试。提交应答丢失通过“真实数据库提交后抛出传输错误”注入验证；UI 错误响应通过 Playwright 路由注入验证。
 - 未部署多副本 HTTP 服务；AC20 已验证独立进程共享数据库的原子准入。
 - H/B 的专用本地账号保留；S 自己的 fixture 已清理。密码与连接配置不提交，原始大日志/截图仅本机保存。
-- 应聘身份和通知时间已确认并补齐，见 SUBMISSION；Fork与推送状态更新见第7节，尚未创建PR。
+- 应聘身份和通知时间已确认并补齐，见 SUBMISSION；Fork与推送记录见第7节，当前PR状态见 [SUBMISSION](../SUBMISSION.md)。
 
 ## 5. 独立审查后的补强（2026-10-21）
 
@@ -99,7 +99,7 @@ psql相关建议按应聘者最新要求保持原样，新增预检和客户端�
 
 本轮静态核对脚本及详细结果仅保存在被忽略的 `test-results/quota/final/`；随 Git 保留的核对摘要见 `summary.json` 的 finalDelivery。没有把静态核对写成业务复验。
 
-PR正文见 [PR_BODY](PR_BODY.md)，目标与身份见 [SUBMISSION](../SUBMISSION.md)。本节文档收尾时技术实现及材料已具备发布准备条件，尚未创建Fork或推送；后续按用户授权执行的Fork与推送见第7节，PR尚未创建。最终作业交付仍须在北京时间2026-10-23 17:38前完成PR提交。
+PR正文见 [PR_BODY](PR_BODY.md)，目标与身份见 [SUBMISSION](../SUBMISSION.md)。本节文档收尾时技术实现及材料已具备发布准备条件，尚未创建Fork或推送；后续按用户授权执行的Fork与推送见第7节；本节完成时PR尚未创建，当前状态见SUBMISSION。最终作业交付仍须在北京时间2026-10-23 17:38前完成PR提交。
 
 ## 7. Fork与分支推送（2026-10-21）
 
@@ -108,5 +108,5 @@ PR正文见 [PR_BODY](PR_BODY.md)，目标与身份见 [SUBMISSION](../SUBMISSIO
 - GitHub接口确认账号为Theodora-Y，Fork为 [Theodora-Y/task-planner-interview](https://github.com/Theodora-Y/task-planner-interview)，父仓库为bybzhwbzhh88/task-planner-interview。
 - origin配置为个人Fork，upstream保留原仓库；`git push --set-upstream origin chore/original-baseline` 成功，分支建立远端跟踪，未使用force。
 - 首次远端核对：`git ls-remote origin refs/heads/chore/original-baseline` 为 `a090375b8a898355240bb95cb7b19b5a7ece2de4`，与当时本地HEAD一致；先SPEC后代码的完整历史已推送。
-- 此后仅同步本节、SPEC、SUBMISSION与摘要中的交付状态，不改源码、测试、依赖或迁移，因此不重复业务测试。历史reviewFollowup/finalDelivery保留当时状态，最新交付状态记录在摘要forkDelivery。
-- 剩余：按SUBMISSION确认的标题与PR_BODY正文，向上游main创建PR。本轮未执行，Fork和推送本身不等于完成作业PR提交。
+- 此后仅同步本节、SPEC、SUBMISSION与摘要中的交付状态，不改源码、测试、依赖或迁移，因此不重复业务测试。历史reviewFollowup/finalDelivery保留当时状态，本节Fork阶段记录在摘要forkDelivery，后续PR状态见prDelivery。
+- 本节完成时尚待创建PR；后续已提交 [PR #3](https://github.com/bybzhwbzhh88/task-planner-interview/pull/3)，当前交付状态统一见SUBMISSION。

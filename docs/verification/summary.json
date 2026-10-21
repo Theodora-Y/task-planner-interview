@@ -235,6 +235,24 @@
     "prCreated": false,
     "businessCodeChanged": false,
     "testsRerun": false,
-    "note": "Latest submission state. reviewFollowup/finalDelivery retain their historical pre-fork states. Subsequent changes only synchronize delivery documentation."
+    "note": "Historical fork/push stage; later publication state is recorded in prDelivery. Subsequent changes synchronize documentation only."
+  },
+  "prDelivery": {
+    "recordedDate": "2026-10-21",
+    "url": "https://github.com/bybzhwbzhh88/task-planner-interview/pull/3",
+    "number": 3,
+    "title": "技术｜郑女士｜132****3133",
+    "sourceRepository": "Theodora-Y/task-planner-interview",
+    "sourceBranch": "chore/original-baseline",
+    "baseRepository": "bybzhwbzhh88/task-planner-interview",
+    "baseBranch": "main",
+    "stateAtCreation": "open",
+    "draft": false,
+    "handoffSpecCommit": "21bad24a39e1e304a96de6f23173565e26cc1612",
+    "acceptanceRowsPreserved": 24,
+    "localLinksCheckedBeforePublication": 122,
+    "businessCodeChanged": false,
+    "businessTestsRerun": false,
+    "note": "Current publication record; prior delivery sections retain historical states. PR status may change after this snapshot."
   }
 }

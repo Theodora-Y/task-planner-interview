@@ -4,7 +4,7 @@
 
 ## 任务
 
-原题见 [TASK.md](TASK.md)。本分支已完成额度处理和审查补强：先原子预占再调用模型，成功确认、失败释放；本地验证完成，尚未公开提交 PR。
+原题见 [TASK.md](TASK.md)。本分支已完成额度处理和审查补强：先原子预占再调用模型，成功确认、失败释放；本地验证完成，已提交 [PR #3](https://github.com/bybzhwbzhh88/task-planner-interview/pull/3)，等待仓库方评审。
 
 - [最终SPEC](SPEC.md)：规则、方案取舍与AC01～AC24。
 - [运行与重复验证](docs/QUOTA_RUN.md)、[实际验证记录](docs/VERIFICATION.md)。

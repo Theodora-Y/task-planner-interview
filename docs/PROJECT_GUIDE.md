@@ -147,7 +147,7 @@ flowchart TD
 
 ## 5. 下一步与资料
 
-本地 D1～D6 已完成，AC01～AC23 的实际结果见 VERIFICATION，所有验证入口和必要运行说明见 QUOTA_RUN。独立审查补强已完成；身份和北京时间2026-10-23 17:38截止已确认。尚需个人 Fork 和 PR，本轮未发布。新增AC24的实际结果见VERIFICATION第5节。
+本地 D1～D6 已完成，AC01～AC23 的实际结果见 VERIFICATION，所有验证入口和必要运行说明见 QUOTA_RUN。独立审查补强已完成；身份和北京时间2026-10-23 17:38截止已确认。个人Fork及分支推送已完成，已提交 [PR #3](https://github.com/bybzhwbzhh88/task-planner-interview/pull/3)，当前状态见SUBMISSION。新增AC24的实际结果见VERIFICATION第5节。
 
 - [仓库 README](../README.md)、[作业要求](../TASK.md)、[提交模板](../SUBMISSION.md)。
 - [Wasp 0.25 安装与 WSL 说明](https://wasp.sh/docs/0.25/quick-start)：包括 Node 要求及 Linux 文件系统要求；CLI 使用本仓库固定版本。
