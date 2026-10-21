@@ -63,11 +63,11 @@ Wasp 客户端实际将服务端详情封装为 error.data.data，页面按生�
 - 未进行真实数据库网络故障/操作系统断电测试。提交应答丢失通过“真实数据库提交后抛出传输错误”注入验证；UI 错误响应通过 Playwright 路由注入验证。
 - 未部署多副本 HTTP 服务；AC20 已验证独立进程共享数据库的原子准入。
 - H/B 的专用本地账号保留；S 自己的 fixture 已清理。密码与连接配置不提交，原始大日志/截图仅本机保存。
-- 应聘身份和通知时间已确认并补齐，见 SUBMISSION；个人 Fork 尚未创建，尚未发布 PR。
+- 应聘身份和通知时间已确认并补齐，见 SUBMISSION；Fork与推送状态更新见第7节，尚未创建PR。
 
 ## 5. 独立审查后的补强（2026-10-21）
 
-- **提交资料，已采纳**：应聘者确认称呼“郑女士”、打码手机号132****3133；通知为北京时间2026-10-21 17:38，48小时截止为2026-10-23 17:38。SUBMISSION 已填写，拟用标题为 `技术｜郑女士｜132****3133`。个人 Fork 尚未创建，本轮不发布 PR。
+- **提交资料，已采纳**：应聘者确认称呼“郑女士”、打码手机号132****3133；通知为北京时间2026-10-21 17:38，48小时截止为2026-10-23 17:38。SUBMISSION 已填写，拟用标题为 `技术｜郑女士｜132****3133`。本节审查完成时个人Fork尚未创建；后续状态见第7节。
 - **成功后刷新失败，已补测并修复**：初次仅注入页面 /auth/me 503，真实生成200后，Wasp默认受保护页面包装器进入error并卸载日程组件，原“刷新失败不得改报成功结果”的承诺缺少实际保障。保存了[修复前报告](../test-results/quota/review/auth-refresh-before-fix.json)及[截图](../test-results/quota/review/auth-refresh-before-fix.png)。先同步SPEC，再让首页与demo使用同一源码内登录守卫：仅已确认身份的缓存遇到暂时查询失败时保留视图；无身份/401/403仍限制页面，所有服务端认证和额度逻辑保持原样。
 - **本轮实际复验**：S17/17；B15步、0页面异常；编译、两项tsc均退出0。H35场景为上一轮既有证据，本轮没有重跑，因核心额度服务、数据库、模型与HTTP入口均未改动；新增浏览器401回归核对页面保护调整没有放开生成接口。
 
@@ -99,4 +99,14 @@ psql相关建议按应聘者最新要求保持原样，新增预检和客户端�
 
 本轮静态核对脚本及详细结果仅保存在被忽略的 `test-results/quota/final/`；随 Git 保留的核对摘要见 `summary.json` 的 finalDelivery。没有把静态核对写成业务复验。
 
-PR正文见 [PR_BODY](PR_BODY.md)，目标与身份见 [SUBMISSION](../SUBMISSION.md)。技术实现及材料已具备发布准备条件，但尚未创建个人Fork、推送分支或向上游main提交PR；这些公开操作本轮未执行。最终作业交付仍须在北京时间2026-10-23 17:38前完成PR提交。
+PR正文见 [PR_BODY](PR_BODY.md)，目标与身份见 [SUBMISSION](../SUBMISSION.md)。本节文档收尾时技术实现及材料已具备发布准备条件，尚未创建Fork或推送；后续按用户授权执行的Fork与推送见第7节，PR尚未创建。最终作业交付仍须在北京时间2026-10-23 17:38前完成PR提交。
+
+## 7. Fork与分支推送（2026-10-21）
+
+按应聘者明确授权，使用其选定的GitHub账号Theodora-Y创建个人Fork，并推送 `chore/original-baseline` 分支；没有创建PR。
+
+- GitHub接口确认账号为Theodora-Y，Fork为 [Theodora-Y/task-planner-interview](https://github.com/Theodora-Y/task-planner-interview)，父仓库为bybzhwbzhh88/task-planner-interview。
+- origin配置为个人Fork，upstream保留原仓库；`git push --set-upstream origin chore/original-baseline` 成功，分支建立远端跟踪，未使用force。
+- 首次远端核对：`git ls-remote origin refs/heads/chore/original-baseline` 为 `a090375b8a898355240bb95cb7b19b5a7ece2de4`，与当时本地HEAD一致；先SPEC后代码的完整历史已推送。
+- 此后仅同步本节、SPEC、SUBMISSION与摘要中的交付状态，不改源码、测试、依赖或迁移，因此不重复业务测试。历史reviewFollowup/finalDelivery保留当时状态，最新交付状态记录在摘要forkDelivery。
+- 剩余：按SUBMISSION确认的标题与PR_BODY正文，向上游main创建PR。本轮未执行，Fork和推送本身不等于完成作业PR提交。
