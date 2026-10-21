@@ -1,8 +1,8 @@
 # 项目导读与运行说明
 
-这是一个已提供登录、任务管理和本地模拟日程生成的全栈小项目。作业聚焦额度处理；拟实现的规则、方案、任务及验收只在 [SPEC.md](../SPEC.md) 中维护。
+这是一个已提供登录、任务管理和本地模拟日程生成的全栈小项目。作业聚焦额度处理；业务规则、方案、任务及验收标准在 [SPEC.md](../SPEC.md) 中维护。
 
-状态：2026-10-21 原项目已运行，浏览器基线、迁移、编译和两项 TypeScript 检查均通过。实际版本、证据与已知缺陷见 [运行记录](BASELINE_RUN.md)。SPEC 已定稿为功能实现前的独立设计版本；本轮没有修改额度业务。
+状态：2026-10-21 原项目已运行，浏览器基线、迁移、编译和两项 TypeScript 检查均通过。实际版本、证据与已知缺陷见 [运行记录](BASELINE_RUN.md)。设计提交已独立保留，额度功能现已实现并完成本地验证；当前结果见 [VERIFICATION](VERIFICATION.md)，重复运行见 [QUOTA_RUN](QUOTA_RUN.md)。
 
 ## 1. 环境要求与各组件作用
 
@@ -28,7 +28,7 @@
 
 唯一正式源码已迁移到 `/home/ying/实习小作业/task-planner-interview`，通过 D 盘“实习小作业”中的“正式项目（Ubuntu）”快捷方式打开。Windows 路径为 `\\wsl.localhost\Ubuntu\home\ying\实习小作业\task-planner-interview`。
 
-当前分支 `chore/original-baseline` 已恢复上游历史；个人 Fork 尚未连接。旧解压源码已移除，原 ZIP 仅作归档。SPEC 已收敛为数据库原子预占方案，独立提交设计后再改业务代码；不能把现有基线当成新额度方案已实现。
+当前分支 `chore/original-baseline` 已恢复上游历史；个人 Fork 尚未连接。旧解压源码已移除，原 ZIP 仅作归档。数据库原子预占方案已实现，设计提交与后续实现提交按顺序保留；原始基线与新额度验收分别记录。
 
 ### 2.2 使用已配置的 Linux 工具
 
@@ -60,7 +60,7 @@ wsl -d Ubuntu -- bash /home/ying/实习小作业/stop.sh
 
 Docker 引擎可访问，但镜像源超时/限流，因此采用 README 支持的自备 PostgreSQL。实际为 PostgreSQL 16.15，地址 `127.0.0.1:55432`，数据位于 `.environment/pgdata`。
 
-`.env.server` 已配置连接且受 Git 忽略；不要用示例覆盖。已有迁移 `20261015081629_init` 已成功执行，日常重启无需迁移。以后确有数据模型变更时再执行 `wasp db migrate-dev`。
+`.env.server` 已配置连接且受 Git 忽略；不要用示例覆盖。已有初始化迁移和新增 `20261021133000_quota_reservation` 均已应用，日常重启无需迁移；以后模型变化时再执行 `wasp db migrate-dev`。
 
 本机当前安排不使用 `wasp start db`，也不额外启动第二份项目数据库。
 
@@ -83,7 +83,7 @@ npx tsc --project tsconfig.wasp.json --noEmit
 
 基础检查不等于额度业务验收；业务验收按 [SPEC.md](../SPEC.md) 逐项执行。`wasp db studio` 是开发工具，不是产品给用户的额度管理入口。
 
-## 3. 已有功能与真实行为
+## 3. 原始基线功能（实现前）
 
 | 功能 | 源码中的实际行为 |
 | --- | --- |
@@ -99,6 +99,8 @@ npx tsc --project tsconfig.wasp.json --noEmit
 | 外观 | 支持深浅色切换、Toast、生成加载状态与本页按钮禁用。 |
 
 这是一套确定性模拟流程；没有真实 LLM 推理、Agent 自主循环、工具选择或 RAG。作业要体现的是模型调用周边的业务控制、验证和交接能力。
+
+本节用于理解作业初始状态；当前额度处理已改进，详见 SPEC 和 VERIFICATION。
 
 ## 4. 架构与调用链
 
@@ -130,20 +132,22 @@ flowchart TD
 
 `wasp/client/*`、`wasp/server/*`、`wasp/entities` 是 Wasp 生成的接口，不是漏下载的源码。`.wasp/` 是生成目录，应修改源配置后重新生成；不要直接编辑生成文件或把它们提交。
 
-核心数据关系：`User` 一对多 `Task`，`User` 一对多 `PlanResult`。`User.credits` 默认 3；`Task` 有描述、预计时长字符串和完成状态；`PlanResult` 保存日程 JSON 与时间。登录所需的 `Auth`、`AuthIdentity`、`Session` 由 Wasp 认证机制管理，初始迁移中可看到这些表。
+当前额度增加 `GenerationAttempt` 状态表及可空唯一的结果关联。生成入口依次执行预占短事务、模型调用、确认或释放短事务；不依赖进程队列。
 
-现有生成链路：
+原始核心数据关系：`User` 一对多 `Task`，`User` 一对多 `PlanResult`。`User.credits` 默认 3；`Task` 有描述、预计时长字符串和完成状态；`PlanResult` 保存日程 JSON 与时间。登录所需的 `Auth`、`AuthIdentity`、`Session` 由 Wasp 认证机制管理，初始迁移中可看到这些表。
+
+原始生成链路：
 
 ```text
 点击生成 → generatePlan({ hours }) → 登录/参数检查 → 读取任务
 → 调用模型 → 检查 context.user.credits → 事务保存结果并扣减 → 页面展示
 ```
 
-待修复的位置：额度检查顺序太晚；余额可能过期；扣减缺少当前余额条件；模型抛错未被映射为明确的业务失败。现有事务保证其内部保存与扣减的原子性，但没有覆盖模型调用前的并发准入。
+原始问题（本轮已修复）：额度检查顺序太晚；余额可能过期；扣减缺少当前余额条件；模型抛错未被映射为明确的业务失败。现有事务保证其内部保存与扣减的原子性，但没有覆盖模型调用前的并发准入。
 
 ## 5. 下一步与资料
 
-正式分支、Linux 工具和原始基线已经准备完成。SPEC 已定稿，选用数据库原子预占与按请求确认/释放；下一轮依次完成 SPEC 第 5 节的 D1～D6，并按第 6 节 AC01～AC23 验收。新增表、迁移、测试脚本均为计划，当前尚不存在。
+本地 D1～D6 已完成，AC01～AC23 的实际结果见 VERIFICATION，所有验证入口和必要运行说明见 QUOTA_RUN。下一步是人工审查及补齐应聘信息、Fork 和 PR；本轮未发布 PR。
 
 - [仓库 README](../README.md)、[作业要求](../TASK.md)、[提交模板](../SUBMISSION.md)。
 - [Wasp 0.25 安装与 WSL 说明](https://wasp.sh/docs/0.25/quick-start)：包括 Node 要求及 Linux 文件系统要求；CLI 使用本仓库固定版本。

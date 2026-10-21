@@ -14,7 +14,7 @@ export const demoAiAppSpec: Spec = [
   route("DemoAppRoute", "/demo-app", page(DemoAppPage, { authRequired: true })),
 
   query(getPlanResults, { entities: ["User", "PlanResult"] }),
-  action(generatePlan, { entities: ["User", "Task", "PlanResult"] }),
+  action(generatePlan, { entities: ["User", "Task", "PlanResult", "GenerationAttempt"] }),
 
   query(getAllTasksByUser, { entities: ["Task"] }),
   action(createTask, { entities: ["Task"] }),

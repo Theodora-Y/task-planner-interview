@@ -2,7 +2,7 @@
 
 判断：原实现先调用模型，再读取认证快照中的余额决定扣减，无法在调用前控制额度与并发。选用 **PostgreSQL 原子预占 + 按请求记录状态 + 短事务确认或释放**。不使用进程内队列，不把“单服务”解释为“必然只有一个 Node 业务进程”。
 
-状态：**2026-10-21，功能实现前的定稿设计；本文中的新行为、迁移、测试与脚本均尚未实现或执行。** 原始环境与基线已完成，详见 [BASELINE_RUN](docs/BASELINE_RUN.md)。本次仅提交设计和相关说明；后续改变设计须保留本版历史并同步修订。
+状态：**2026-10-21，已按本设计实现并完成本地验证。** 设计提交 `99cecc9` 独立保留；本版同步实际文件、命令及验证入口。原始基线见 [BASELINE_RUN](docs/BASELINE_RUN.md)，新功能结果见 [VERIFICATION](docs/VERIFICATION.md)，不混用两轮结论。
 
 ## 1. 需求、现状与范围
 
@@ -12,7 +12,7 @@
 
 “成功生成”定义为模型成功且结果已持久化。`mock-ai.started` 是一次实际调用；`mock-ai.succeeded` 不能证明结果已保存或业务已成功。
 
-### 1.2 当前事实与证据等级
+### 1.2 原始基线事实与证据等级
 
 | 项目 | 当前结论 | 依据 |
 | --- | --- | --- |
@@ -24,7 +24,7 @@
 | 已有事务 | 结果创建和最终扣减已经在同一个事务内；缺少的是模型调用前的并发准入 | 源码确认；不能将原项目描述为“完全没有事务” |
 | 进程 | 本机观察到一个业务 Node 进程，另有 Wasp/Vite/nodemon 进程 | 环境观察不构成部署保证；原题只规定单服务、单数据库 |
 
-环境验收完成不等于额度功能完成。下面 AC01～AC23 全部是**未来验收预期**，即使个别行为与基线重合，也不标作新功能已通过。
+下表保留的是原始基线，不能描述成当前缺陷。第 6 节 AC01～AC23 保留验收标准；本轮实现后的真实结果单独记录在 VERIFICATION，不把设计预期直接当作通过证据。
 
 ### 1.3 正确性补充、可选项与范围外
 
@@ -43,7 +43,7 @@
 
 只做原子扣减然后在 `catch` 中无条件加回并不够：确认提交后响应丢失时可能错误退款，重复清理也可能多返还。新增请求记录用于限定“这一个预占只能确认或释放一次”，不扩展为通用任务调度系统。
 
-### 2.1 最小数据变更（全部待实现）
+### 2.1 最小数据变更（已实现）
 
 - `User.credits` 保留名称和默认值 3，含义明确为**当前可用额度**；预占时减 1，失败释放时加 1，成功确认时不再重复扣减。
 - 新增 `GenerationAttempt`：`id`（服务端生成 UUID）、`userId`、`status`（`RESERVED / SUCCEEDED / RELEASED`）、`createdAt`、`updatedAt`；外键关联 User，增加 `(userId, status)` 索引。不存密码、任务正文或模型输出副本。
@@ -84,7 +84,7 @@ T1 以数据库当前值进行条件更新，避免“先 SELECT 再无条件减
 
 **T3 释放短事务**：按 `id + userId + status=RESERVED` 将状态条件更新为 RELEASED；仅在受影响行数为 1 时将该用户 `credits +1`，两步同一事务。已 RELEASED 返回“已释放”，已 SUCCEEDED 返回“已成功及其结果”，不返还。不允许 `finally` 中无条件加余额。
 
-| 情形 | 服务端结算与响应（拟实现） | 是否消费、后续处理 |
+| 情形 | 服务端结算与响应（已实现） | 是否消费、后续处理 |
 | --- | --- | --- |
 | 预占确定失败/回滚 | 无余额为 402 `NO_AVAILABLE_CREDIT`；数据库错误为 503 `DB_UNAVAILABLE`；零模型调用 | 无消费、无结果；后续请求独立执行 |
 | 模型明确失败，如 `[fail]` | 调用 T3，确认 RELEASED 后返回 502 `PROVIDER_FAILED` | 不消费；可改任务重试 |
@@ -108,7 +108,7 @@ T1 以数据库当前值进行条件更新，避免“先 SELECT 再无条件减
 
 ## 4. 前端行为与刷新
 
-复用 `useAuth()` 的余额数据及其公开 `refetch()`，不新增旧草稿中的 `getCredits`。本地 Wasp 0.25 生成源码确认：`auth/useAuth.ts` 注册的查询依赖 User，`client/operations/actions/core.ts` 在 finally 中触发实体失效；基线已观察成功刷新。失败/焦点行为仍要实际验证，不能仅凭源码判通过。
+复用 `useAuth()` 的余额数据及其公开 `refetch()`，不新增旧草稿中的 `getCredits`。本地 Wasp 0.25 生成源码确认：`auth/useAuth.ts` 注册的查询依赖 User，`client/operations/actions/core.ts` 在 finally 中触发实体失效；基线已观察成功刷新。本轮已用真实失败和双标签页浏览器场景验证结束/焦点刷新，见 VERIFICATION；不只凭源码判通过。
 
 页头把 `user.credits` 标作“可用额度”；生成区说明“生成时暂占 1 个额度，成功后消费，失败后释放”。请求结算后明确调用认证 `refetch()`；注册一次页面 focus/可见性恢复刷新并在卸载时清理监听。共享认证缓存，查询失败显示刷新入口，不用本地 `credits -1` 乐观扣减代替服务端值。刷新失败不得把已经成功的生成改报为失败。
 
@@ -126,22 +126,22 @@ T1 以数据库当前值进行条件更新，避免“先 SELECT 再无条件减
 
 保留输入与任务；生成失败时保留的旧日程明确标为“上次成功生成的日程”。错误处理须先识别稳定 code，再使用安全的通用提示；原项目 500/HTML 的现象不应让页面解析崩溃。401 引导登录，400 指出参数或空任务问题。`[fail]` 操作写入开发说明，不添加测试开关到产品页面。
 
-## 5. 实现任务（下一阶段，尚未开始）
+## 5. 实现任务（本地完成）
 
-| 顺序 | 修改/新增文件（新增者当前不存在） | 完成内容 | 验收 |
+| 顺序 | 修改/新增文件（新增者已创建） | 完成内容 | 验收 |
 | --- | --- | --- | --- |
-| D1 | `schema.prisma`、`migrations/<生成时间>_quota_reservation/`（新增迁移） | attempt、结果唯一关联、旧数据兼容、余额 CHECK；检查负余额后迁移并生成客户端 | AC01、AC21 |
+| D1 | `schema.prisma`、`migrations/20261021133000_quota_reservation/`（新增迁移） | attempt、结果唯一关联、旧数据兼容、余额 CHECK；检查负余额后迁移并生成客户端 | AC01、AC21 |
 | D2 | `src/demo-ai-app/quotaService.ts`（新增） | T1/T2/T3、状态条件、幂等释放、短事务、未知结算处理；依赖 Prisma 事务客户端而非内存余额 | AC07～AC11、AC14～AC20、AC22、AC23 |
 | D3 | `src/demo-ai-app/planService.ts`（新增）、`operations.ts`、`demo-ai-app.wasp.ts` | 认证/校验、任务快照、预占后模型、独立错误边界；声明新实体依赖；保留模拟器与返回结构 | AC02～AC10、AC12、AC14、AC15、AC17～AC19 |
 | D4 | `src/client/App.tsx`、`DemoAppPage.tsx` | 可用额度、禁用、错误反馈、旧结果标题、认证/焦点刷新 | AC01～AC06、AC12、AC13、AC18 |
-| D5 | `tests/quota.integration.test.ts`、`tests/helpers/quota-worker.ts`、`vitest.server.config.ts`、`scripts/verify-quota.mjs`（均新增） | 真实 PostgreSQL 事务/屏障/故障注入/跨进程检查；HTTP 可重复验收并输出报告；随 D1～D4 增量实现测试 | AC01～AC23 |
+| D5 | `tests/quota.integration.test.ts`、`tests/helpers/quota-worker.ts`、`vitest.server.config.ts`、`scripts/verify-quota.mjs`、`scripts/prepare-test-db.mjs`、`scripts/verify-browser.cjs`、`tests/helpers/register-ts.mjs`（均新增） | 真实 PostgreSQL 事务/屏障/故障注入/跨进程检查；HTTP 可重复验收并输出报告；随 D1～D4 增量实现测试 | AC01～AC23 |
 | D6 | `SUBMISSION.md`、必要运行文档及 SPEC 修订 | 三项基础检查、浏览器验收、逐项真实证据、未完成项、个人 Fork/PR 交接 | 完成条件 |
 
 不改 `.wasp/` 生成文件；不改变 `mockAi.ts` 的约 500ms 延迟、`[fail]`、事件名称或 callId。不为测试增加公开故障接口；只向内部服务注入测试模型包装器和事务内失败钩子。新文件名可调整，但在提交前同步 SPEC。身份、打码手机号和招聘通知时间尚未提供，不推测填写。
 
-## 6. 验收案例（全部待执行）
+## 6. 验收案例
 
-符号：C=可用额度，P=RESERVED 数量，M=`mock-ai.started` 次数，ΔR=结果记录增量。未特别说明时：独立已登录账号、普通任务、hours=8、初始 P=0、数据库健康、无外部改额。M/ΔR 只统计该场景，排除准备数据调用；所有结束态还要检查状态与结果关系。服务层故障测试写明拟映射的 HTTP 状态，不能声称真实 HTTP 已测试。
+符号：C=可用额度，P=RESERVED 数量，M=`mock-ai.started` 次数，ΔR=结果记录增量。未特别说明时：独立已登录账号、普通任务、hours=8、初始 P=0、数据库健康、无外部改额。M/ΔR 只统计该场景，排除准备数据调用；所有结束态还要检查状态与结果关系。服务层故障测试的 HTTP 状态来自领域结果映射，不能冒称真实 HTTP 数据库故障已测试。
 
 保留草稿 AC01～AC14 的主题及编号；AC09/AC14 按“不排队、预占竞争”修订期望。后续增加的 AC15～AC23 属于正确性检查，不冒称原题逐字要求。
 
@@ -173,27 +173,32 @@ T1 以数据库当前值进行条件更新，避免“先 SELECT 再无条件减
 
 AC09 的真实 HTTP 无屏障压力补测只校验：每个请求为 402 或 502、M=502 数量、ΔR=0、最终 C=1/P=0；M 可能为 1～3，取决于失败释放时机。固定 1 次调用只适用于表内屏障前置条件，不要求真实并发调度总以同一顺序发生。
 
-## 7. 可重复验证计划与交接
+## 7. 可重复验证与当前交接
 
-### 7.1 真实 HTTP 验证（脚本尚不存在）
+完整操作、数据库保护和命令见 [QUOTA_RUN](docs/QUOTA_RUN.md)，按验收编号的预期/实际/证据见 [VERIFICATION](docs/VERIFICATION.md)。所有下面引用的新增入口均已存在并实际运行；原始大日志与截图只保存在本机，Git 内保留脱敏结果快照。
 
-计划入口：`node scripts/verify-quota.mjs --base-url http://localhost:3001 --server-log <实际应用日志绝对路径> --rounds 10`。**当前不可执行；实现时补齐帮助、参数和报告格式。** 本机服务与日志启动方式见环境记录，不重复开第二个 `wasp start`。
+### 7.1 真实 PostgreSQL 服务测试
 
-- 使用真实注册/登录、任务、生成、`/auth/me`、结果查询完成 AC01～AC08、AC09 无屏障补测及 AC12 HTTP 子集。按本地生成的 Wasp 0.25 路由、认证及序列化实现，不把 `/operations/...` 当作任意 JSON API。
-- 每场景新建专用账号；默认 3，准备 C=1/0 时先成功生成 2/3 次，之后记录余额、结果和日志起点。密码不落报告，不影响原始基线账号。
-- 并发必须同时创建请求并统一 `Promise.allSettled`，禁止循环内逐个 await。按区间与唯一 callId 统计 started/succeeded/failed；测试期间不混入人工请求；清理时只删除本轮 fixture。
-- 每轮输出各响应状态、前后 C/P、M、ΔR 和断言。P/状态关系由独立测试数据库的只读检查补充，不新增公开审计接口；脚本使用显式配置的测试连接，不打印连接密钥。
-- 缺日志、请求超时、异常 HTTP 格式或断言失败均非零退出；不能把缺少观测值当作 0。HTTP 报告不能代替故障注入测试。
+```sh
+node scripts/prepare-test-db.mjs --name task_planner_quota_test
+npx vitest run --config vitest.server.config.ts tests/quota.integration.test.ts
+```
 
-### 7.2 真实数据库服务测试（入口待实现）
+显式准备名称以 _quota_test 结尾的独立数据库，生成被忽略的 .env.quota-test；测试再次校验库名，仅清理自己的 fixture。覆盖真实模型、事务与约束、屏障并发、SQL 回滚、真实提交后丢失应答及独立 Node 进程。AC21 另建临时旧结构库与负余额库并清理，不在开发数据上执行清库。
 
-计划命令：`npx vitest run --config vitest.server.config.ts tests/quota.integration.test.ts`。使用现有 Vitest、Node 环境和独立 PostgreSQL 测试数据库；显式要求测试库连接及库名保护，不得在开发数据上执行清库。
+### 7.2 真实 HTTP 与浏览器
 
-覆盖 AC09 屏障、AC10/11/14～AC23，使用真实事务、条件更新、唯一约束和真实模型包装器；包装器保持模型日志与调用一次的语义，只控制返回时点。注入点为事务内写入失败或“真实提交后抛出传输错误”，不得用纯内存数据库替身宣称事务验证通过。跨进程测试聚合每个子进程日志，设置屏障截止时间并回收进程，超时判失败。
+```sh
+node scripts/verify-quota.mjs --base-url http://localhost:3001 --server-log /home/ying/实习小作业/.environment/logs/app.log --rounds 10
+```
 
-### 7.3 基础检查与浏览器验收
+使用真实认证、Wasp 序列化和 operations。所有并发请求一起发起，按场景起点统计唯一 callId；准备额度的调用排除。报告同时包含状态、前后 C/P、ΔR、started/succeeded/failed；缺日志、超时、非 JSON 或断言失败非零退出。
 
-实现完成并迁移/生成客户端后，在 Ubuntu 正式目录执行：
+**对初稿的实现澄清**：HTTP 只读核对必须连接与被测 API 相同的数据库，否则无法看到新注册账号；服务测试的隔离数据库不能直接用来核对开发 API。HTTP 不清空数据，留下独立 quota_* 账号；密码不落报告。执行期间不混入其他模型请求。
+
+浏览器入口为 scripts/verify-browser.cjs，已在现有 Windows Edge/Playwright 中运行；完整本机命令见 QUOTA_RUN。覆盖真实操作与焦点路径，并对保存失败、未知状态、服务故障和非 JSON 响应进行明确标注的 UI 注入。UI 注入不代替真实数据库故障语义测试。Wasp 0.25 当前客户端错误详情位于 error.data.data，已按实际生成源码适配。
+
+### 7.3 编译与类型检查
 
 ```sh
 source /home/ying/实习小作业/env.sh
@@ -202,12 +207,11 @@ npx tsc --project tsconfig.src.json --noEmit
 npx tsc --project tsconfig.wasp.json --noEmit
 ```
 
-以上在**原始基线**已通过，本轮文档定稿不重复执行；新实现必须重新运行。浏览器验证 AC01～AC06 页面部分、AC12 提示、AC13 焦点及 AC18 未知状态反馈，另检查错误为非 JSON 时页面不崩溃。按 AC 编号写入 `SUBMISSION.md`：前置数据、操作/命令、预期、实际、证据；未执行、失败、通过分开列。
+本轮新实现三项退出码均为 0，不复用原始基线结论。真实 PostgreSQL 最终 17/17 测试通过；HTTP 35 场景、浏览器12步通过。AC01～AC23 的实际结果与局限逐项见 VERIFICATION。
 
-### 7.4 当前交接状态与完成门槛
+### 7.4 当前交接
 
-- 已完成：唯一源码 `/home/ying/实习小作业/task-planner-interview`；Node 24.14.1、Wasp 0.25.0、PostgreSQL 16.15/55432；原始基线。无需重搭环境。
-- 本次设计提交基于上游 `114aeb28f6368e96c08a25627ac094b8d102fd1b`，分支 `chore/original-baseline`，保留三条上游历史；仅本文及相关文档进入设计提交。提交 ID 从 Git 历史或本轮交付报告查询，避免把自身哈希写进自身提交。
-- 待完成：D1～D6、全部新版验收、新实现的三项检查；明确记录失败项与边界。本文不包含已实现额度功能的声明。
-- 尚未提供：个人 Fork、应聘称呼/打码手机号、招聘通知时间。可先本地开发；最终在 48 小时截止前按原题填写 SUBMISSION 并发 PR，标题为 `技术｜称呼｜138****5678`，不填写完整手机号。
-- 本轮到设计提交为止，不开始迁移、额度业务代码或测试脚本实现。运行指南见 [PROJECT_GUIDE](docs/PROJECT_GUIDE.md)，环境事实只在 [BASELINE_RUN](docs/BASELINE_RUN.md) 维护。
+- 已完成：D1～D6 的本地实现、迁移、重复验证与记录；唯一源码、环境和日常启停安排保持不变。
+- 设计版独立提交 99cecc9994a24fbd78549f54dd2f9166a6bf2cfd 保留于历史，实现与验证接续提交，不重写上游。
+- 自动崩溃补偿、跨请求幂等、真实网络断电测试及多副本 HTTP 部署未实现或未执行；区分范围外能力与已验证的跨进程原子准入。
+- 个人 Fork、应聘称呼/打码手机号和招聘通知时间待提供。SUBMISSION 已填写本地交付情况，公开发布前补齐身份与截止时间，本轮不发布 PR。
