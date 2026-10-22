@@ -2,6 +2,8 @@
 
 2026-10-21，Ubuntu / WSL2，Node 24.14.1、Wasp 0.25.0、PostgreSQL 16.15。**本地实现与验证已完成；已提交 [PR #3](https://github.com/bybzhwbzhh88/task-planner-interview/pull/3)，等待仓库方评审。** 原始环境基线不是本轮功能证据，仍单独保留在 [BASELINE_RUN](BASELINE_RUN.md)。
 
+最新自助完整复验：[CI通过，17项数据库／35个HTTP场景／15步浏览器](https://github.com/Theodora-Y/task-planner-interview/actions/runs/39793738843)，详见第8节。
+
 原始额度实现提交 `da266a9146fc173213840f87328c36dafdc47f1c`；设计提交 `99cecc9` 保留。后续审查补强见第5节，原始证据链接当前指向最新复验文件，初验快照保留在摘要的原字段中。
 
 执行入口与完整命令见 [QUOTA_RUN](QUOTA_RUN.md)：S=真实 PostgreSQL 服务测试，H=真实 HTTP，B=Edge/Playwright，C=编译与类型检查。初验为 AC01～AC23；审查新增 AC24 的补测与修复见第5节。验收前置条件和操作按 [SPEC 第7节](../SPEC.md#7-验收标准与验证入口)；下表列明预期和实际。S 中 HTTP 状态是业务错误到响应的映射结果，并非声称发生了真实 HTTP 数据库断网。
@@ -116,5 +118,9 @@ PR正文见 [PR_BODY](PR_BODY.md)，目标与身份见 [SUBMISSION](../SUBMISSIO
 此前交付虽然列出验证命令，但数据库配置、浏览器安装及服务日志路径需要接手者组合，不足以快速复验。本轮新增统一命令与自动隔离环境，不改额度业务或模拟模型。原数据库测试仅调整环境变量读取及SQL客户端启动，所有原断言保持原文。Playwright1.64.1由本机外挂改为固定开发依赖，仅新增playwright/playwright-core两个锁文件包，既有依赖版本未升级。
 
 - 本机 npm run verify：真实执行通过，自动创建/销毁独立PostgreSQL16集群，编译、两项tsc及17/17数据库测试通过，0失败/跳过，33秒。依赖已有缓存，不将此耗时写成首次安装承诺。
-- 干净检出和GitHub完整CI：本轮待执行，不引用历史HTTP/浏览器结果冒称新入口已通过。完成后在此更新实际结果与运行链接。
-- 新入口与前提统一见[QUOTA_RUN](QUOTA_RUN.md)。原始报告位于test-results/quota/verify-summary.json及分步骤日志，受Git忽略；历史验证快照继续保留。
+- 干净检出核心：未复制.env、node_modules或.wasp，从检出源码运行npm run verify，57秒通过编译、两项tsc和17/17数据库测试。OS工具及npm下载缓存可复用，不冒称全新操作系统。
+- 干净检出完整：在另一无配置、无依赖、无生成目录的临时检出运行npm run verify:all；系统浏览器库就绪后136秒通过S17/17、H35场景、B15步，0页面异常。临时应用与PostgreSQL均已停止。
+- [GitHub完整CI](https://github.com/Theodora-Y/task-planner-interview/actions/runs/39793738843)：复验实现提交ebb08bb8005382a90f5884d4eb046f17054b5ca6，Ubuntu24.04/Docker PostgreSQL16/Chromium，170秒通过相同的S17/H35/B15与编译、两项tsc；下载quota-verification附件已核对全部计数及各阶段退出0。默认Docker路径用容器内SQL客户端，无需宿主psql。
+- 首次本地完整复验在浏览器阶段因缺少Linux系统库失败（非零退出），已按Playwright安装必要系统库后，在新检出完整重跑通过。未修改断言或模型来通过。
+- 安全拒绝实测：非*_quota_test地址在迁移前退出1，报告stages为空；未读取或改动开发库。
+- 新入口与前提统一见[QUOTA_RUN](QUOTA_RUN.md)。历史原始报告受Git忽略；本轮本地归档在test-results/quota/reproduction，公开的完整CI报告/截图在上述Actions附件。脱敏摘要的reproductionRepair绑定真实运行与提交，历史快照继续保留。

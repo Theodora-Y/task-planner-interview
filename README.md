@@ -21,6 +21,8 @@ npm run verify
 
 自动安装依赖、建立隔离数据库、编译、执行两项类型检查和全部17项数据库验收，不需要个人 .env、数据库连接串或本机路径。完整真实HTTP与浏览器验证使用干净检出中的 `npm run verify:all`。
 
+[完整CI实际通过：17项数据库／35场景HTTP／15步浏览器](https://github.com/Theodora-Y/task-planner-interview/actions/runs/39793738843)。本轮CI耗时170秒，不作为首次下载时间承诺。
+
 [完整说明与失败定位](docs/QUOTA_RUN.md) · [自动复验Actions](https://github.com/Theodora-Y/task-planner-interview/actions/workflows/verify.yml) · [实际结果](docs/VERIFICATION.md)
 
 ## 环境

@@ -1,38 +1,41 @@
 ## 解决的问题
 
-原流程在额度检查前调用模型，并发请求使用认证余额快照，可能多发模型调用或透支。改为调用前原子预占额度：无可用额度立即拒绝；模型明确失败释放；成功结果与消费确认一致提交。
+完善日程生成额度处理：模型调用前原子预占，余额不足不调用模型；模型明确失败释放；成功结果与消费状态一致提交；同账号并发不透支，页面区分成功、明确失败与结果不明。
 
-## 最终方案与取舍
+采用PostgreSQL条件更新及RESERVED/SUCCEEDED/RELEASED请求状态，不依赖单个Node进程。模型在短事务之外执行，代价是增加请求记录和异常结算逻辑。保留原模拟模型语义及原初始化迁移。
 
-- PostgreSQL 条件更新预占1额度，按请求记录 RESERVED / SUCCEEDED / RELEASED；确认与释放使用短事务和状态条件，避免重复退款。
-- 模型在事务之外调用；模型成功但保存失败时释放，提交应答丢失时按状态核对，不盲目退款或重跑模型。
-- 不依赖“单服务即单进程”，不引入 Redis、消息队列或后台调度；增加一张请求状态表和结果唯一关联。
-- 页面展示可用额度并刷新，区分明确失败与状态不明。修复生成成功后认证刷新503导致日程卸载的问题，保留成功结果；未登录及认证拒绝回归通过。
+## 接手者复验
+
+Linux／Ubuntu WSL准备Node >=24.14.1、Wasp0.25.0，以及Docker或本机PostgreSQL服务端工具后，在PR分支根目录运行：
+
+```sh
+npm run verify
+```
+
+自动安装依赖、创建并清理隔离数据库、编译、类型检查和运行17项真实数据库验收，无需作者配置或数据库密码。干净检出运行 `npm run verify:all`，自动启动隔离应用并验证真实HTTP与Chromium；首次本地浏览器系统库准备见运行说明，CI自动安装。
 
 ## 实际验证
 
-- 真实 PostgreSQL：17/17测试通过，覆盖回滚、重复释放、状态不明、迁移兼容及五个独立Node进程竞争。
-- 真实 HTTP：35场景通过；余额1和3各10轮，每轮同时发起5请求，核对响应、余额/预占、结果增量和真实模型日志。
-- 浏览器：最终15步通过、0页面异常，覆盖失败恢复、双标签页、认证刷新失败/恢复及登录保护。
-- `wasp compile`、两项仓库规定的TypeScript检查均退出0。
+[完整GitHub CI已通过](https://github.com/Theodora-Y/task-planner-interview/actions/runs/39793738843)，对应复验实现提交ebb08bb；已下载核对归档报告：
 
-HTTP35场景为初验证据；后续只改页面保护、浏览器回归和交接文档，核心额度/模型/数据库及HTTP入口未变，因此未重复HTTP压力验证。数据库和页面故障注入方式及范围在验证记录中明确区分。
+- 编译和两项TypeScript检查退出0。
+- 真实PostgreSQL 17/17，0失败、0跳过；包含事务、故障注入、迁移及5个独立Node进程。
+- 真实HTTP 35场景，包含余额1/3各10轮、每轮5请求并发；核对响应、余额、结果和实际模型调用。
+- Chromium浏览器15步，0页面异常，包括生成成功后认证刷新503的保留与恢复。
+- 同一命令在本地无个人配置/依赖/生成目录的干净检出中通过：核心57秒、完整136秒；CI完整170秒。网络与缓存会影响耗时。
+- 非测试库URL在迁移前拒绝；原验收断言及额度业务未改。新增固定Playwright开发依赖，既有依赖版本未升级。
 
-## 文档与提交顺序
+## 文档与历史
 
-- 需求、流程和AC01～AC24：`SPEC.md`
-- 首次运行、停止/重启、复验命令：`README.md`、`docs/QUOTA_RUN.md`
-- 按编号的预期、实际和证据：`docs/VERIFICATION.md`、`docs/verification/summary.json`
-- 应聘资料及交接：`SUBMISSION.md`
+- [最终SPEC](https://github.com/Theodora-Y/task-planner-interview/blob/chore/original-baseline/SPEC.md)：FR01～FR10、方案与AC01～AC24。
+- [快速运行与复验](https://github.com/Theodora-Y/task-planner-interview/blob/chore/original-baseline/docs/QUOTA_RUN.md)
+- [逐项实际结果与最新证据](https://github.com/Theodora-Y/task-planner-interview/blob/chore/original-baseline/docs/VERIFICATION.md)
+- [提交说明](https://github.com/Theodora-Y/task-planner-interview/blob/chore/original-baseline/SUBMISSION.md)
 
-本地 Git 历史先设计后实现：`99cecc9`（独立SPEC，仅文档）→ `da266a9`（额度实现）→ `c1f2976`（验证记录）→ `2b46f01`（审查补强）。设计初稿仍在历史中，未重写上游。
+99cecc9为代码修改前的独立SPEC提交，早于实现da266a9；21bad24为实现后的交接版修订。初稿历史保留，未重写上游。
 
 ## 已知限制
 
-自动崩溃补偿、跨请求幂等和模型永久挂起取消不在本次范围；进程崩溃或数据库长期不可用可能遗留预占，未知结果不自动重试。未进行真实网络断电或多副本HTTP部署测试；跨进程原子准入已验证。模拟模型与原初始化迁移保持原样；自助复验新增Playwright开发依赖，未升级现有依赖版本。
+自动崩溃补偿、跨请求幂等、模型永久挂起取消不在范围；长期故障可能遗留预占。未做真实网络断电、多副本HTTP部署测试；数据库提交应答丢失及页面错误响应均明确采用注入验证。无缓存503与缓存401尚缺专项浏览器证据，不宣称已覆盖。
 
-原始大日志/截图只保存在本机；提交中提供脱敏结果快照和可重复执行入口，不包含本地配置或测试凭据。
-
-## 自助复验入口
-
-Linux/Ubuntu WSL准备Node24.14.1、Wasp0.25.0及Docker或本机PostgreSQL服务端工具后，运行 npm run verify，自动准备隔离数据库、编译、类型检查和17项数据库验收。干净检出运行 npm run verify:all，额外自动启动应用并验证真实HTTP与浏览器。无个人配置或作者路径依赖。CI使用同一完整命令；实际运行链接与结果见docs/VERIFICATION.md第8节。
+历史原始日志仅本机保留；本轮完整报告、截图和检查日志可从上述CI的quota-verification附件下载，不包含个人配置或测试密码。

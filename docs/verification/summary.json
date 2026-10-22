@@ -254,5 +254,90 @@
     "businessCodeChanged": false,
     "businessTestsRerun": false,
     "note": "Current publication record; prior delivery sections retain historical states. PR status may change after this snapshot."
+  },
+  "reproductionRepair": {
+    "recordedDate": "2026-10-22",
+    "toolingCommit": "ebb08bb8005382a90f5884d4eb046f17054b5ca6",
+    "quotaBusinessCodeUnchanged": true,
+    "originalAcceptanceAssertionsPreserved": true,
+    "applicationDependenciesUnchanged": true,
+    "newDevDependency": "playwright@1.64.1",
+    "commands": {
+      "core": "npm run verify",
+      "complete": "npm run verify:all"
+    },
+    "local": {
+      "cachedCoreSeconds": 33,
+      "cleanCheckoutCoreSeconds": 57,
+      "cleanCheckoutAll": {
+        "startedAt": "2026-10-22T14:26:12.370Z",
+        "mode": "all",
+        "stages": [
+          {"name":"database-init","startedAt":"2026-10-22T14:26:13.464Z","exitCode":0,"finishedAt":"2026-10-22T14:26:13.882Z"},
+          {"name":"database-start","startedAt":"2026-10-22T14:26:13.883Z","exitCode":0,"finishedAt":"2026-10-22T14:26:13.989Z"},
+          {"name":"database-create","startedAt":"2026-10-22T14:26:13.989Z","exitCode":0,"finishedAt":"2026-10-22T14:26:14.019Z"},
+          {"name":"install","startedAt":"2026-10-22T14:26:14.020Z","exitCode":0,"finishedAt":"2026-10-22T14:26:18.744Z"},
+          {"name":"compile","startedAt":"2026-10-22T14:26:18.744Z","exitCode":0,"finishedAt":"2026-10-22T14:26:39.887Z"},
+          {"name":"typescript-src","startedAt":"2026-10-22T14:26:39.887Z","exitCode":0,"finishedAt":"2026-10-22T14:26:41.244Z"},
+          {"name":"typescript-wasp","startedAt":"2026-10-22T14:26:41.244Z","exitCode":0,"finishedAt":"2026-10-22T14:26:43.488Z"},
+          {"name":"migrations","startedAt":"2026-10-22T14:26:43.488Z","exitCode":0,"finishedAt":"2026-10-22T14:26:43.860Z"},
+          {"name":"database-tests","startedAt":"2026-10-22T14:26:43.860Z","exitCode":0,"finishedAt":"2026-10-22T14:27:06.438Z"},
+          {"name":"browser-install","startedAt":"2026-10-22T14:27:06.438Z","exitCode":0,"finishedAt":"2026-10-22T14:27:06.765Z"},
+          {"name":"http-tests","startedAt":"2026-10-22T14:27:15.662Z","exitCode":0,"finishedAt":"2026-10-22T14:27:49.454Z"},
+          {"name":"browser-tests","startedAt":"2026-10-22T14:27:49.454Z","exitCode":0,"finishedAt":"2026-10-22T14:28:28.381Z"}
+        ],
+        "passed": true,
+        "database": "disposable local PostgreSQL cluster",
+        "databaseTests": {
+          "passed": 17,
+          "failed": 0,
+          "skipped": 0
+        },
+        "httpCases": 35,
+        "browserSteps": 15,
+        "pageErrors": 0,
+        "finishedAt": "2026-10-22T14:28:28.501Z",
+        "durationSeconds": 136
+      }
+    },
+    "ci": {
+      "url": "https://github.com/Theodora-Y/task-planner-interview/actions/runs/39793738843",
+      "artifactName": "quota-verification",
+      "artifactId": 12432771536,
+      "report": {
+        "startedAt": "2026-10-22T14:12:59.316Z",
+        "mode": "all",
+        "stages": [
+          {"name":"database-start","startedAt":"2026-10-22T14:13:02.378Z","exitCode":0,"finishedAt":"2026-10-22T14:13:15.767Z"},
+          {"name":"install","startedAt":"2026-10-22T14:13:16.94Z","exitCode":0,"finishedAt":"2026-10-22T14:13:21.039Z"},
+          {"name":"compile","startedAt":"2026-10-22T14:13:21.039Z","exitCode":0,"finishedAt":"2026-10-22T14:13:45.6Z"},
+          {"name":"typescript-src","startedAt":"2026-10-22T14:13:45.6Z","exitCode":0,"finishedAt":"2026-10-22T14:13:47.045Z"},
+          {"name":"typescript-wasp","startedAt":"2026-10-22T14:13:47.045Z","exitCode":0,"finishedAt":"2026-10-22T14:13:48.6Z"},
+          {"name":"migrations","startedAt":"2026-10-22T14:13:48.6Z","exitCode":0,"finishedAt":"2026-10-22T14:13:49.018Z"},
+          {"name":"database-tests","startedAt":"2026-10-22T14:13:49.018Z","exitCode":0,"finishedAt":"2026-10-22T14:14:12.574Z"},
+          {"name":"browser-install","startedAt":"2026-10-22T14:14:12.574Z","exitCode":0,"finishedAt":"2026-10-22T14:14:29.328Z"},
+          {"name":"http-tests","startedAt":"2026-10-22T14:14:37.379Z","exitCode":0,"finishedAt":"2026-10-22T14:15:10.105Z"},
+          {"name":"browser-tests","startedAt":"2026-10-22T14:15:10.105Z","exitCode":0,"finishedAt":"2026-10-22T14:15:49.412Z"}
+        ],
+        "passed": true,
+        "database": "disposable Docker PostgreSQL",
+        "databaseTests": {
+          "passed": 17,
+          "failed": 0,
+          "skipped": 0
+        },
+        "httpCases": 35,
+        "browserSteps": 15,
+        "pageErrors": 0,
+        "finishedAt": "2026-10-22T14:15:49.544Z",
+        "durationSeconds": 170
+      }
+    },
+    "unsafeDatabaseGuard": {
+      "rejectedBeforeMigration": true,
+      "exitCode": 1
+    },
+    "initialLocalBrowserFailure": "Linux system libraries missing; installed documented dependencies, then reran all checks from another clean checkout successfully",
+    "scope": "Tooling and documentation only; mock provider and all original acceptance assertions unchanged. Prior snapshots retain historical run data."
   }
 }
