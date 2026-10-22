@@ -20,7 +20,7 @@
 - [quotaService](src/demo-ai-app/quotaService.ts)、[planService](src/demo-ai-app/planService.ts)：原子预占、确认、释放与异常编排。
 - [迁移](migrations/20261021133000_quota_reservation/migration.sql)、[页面](src/demo-ai-app/DemoAppPage.tsx)。
 - [PR正文草稿](docs/PR_BODY.md)：可复制的说明与验证结论。
-- [运行和重复验证](docs/QUOTA_RUN.md)：S/H/B/C 完整命令及环境前提。
+- [运行和重复验证](docs/QUOTA_RUN.md)：npm run verify自动隔离数据库；npm run verify:all执行完整HTTP/浏览器；[CI工作流](.github/workflows/verify.yml)使用同一入口。
 - [逐项实际验收](docs/VERIFICATION.md)、[脱敏结果摘要](docs/verification/summary.json)。
 - [数据库测试](tests/quota.integration.test.ts)、[HTTP 脚本](scripts/verify-quota.mjs)、[浏览器脚本](scripts/verify-browser.cjs)。
 
@@ -49,3 +49,5 @@ AC01～AC24 的命令组、前置操作、预期、实际与证据逐项列在 V
 - 设计、实现、验证及文档提交已随分支完整推送至个人Fork，未压缩或重写历史；本地分支跟踪origin同名分支。
 - PR：[技术｜郑女士｜132****3133](https://github.com/bybzhwbzhh88/task-planner-interview/pull/3)，来源为Theodora-Y的上述分支，目标为上游main；当前等待仓库方评审。
 - 交接规格修订：`21bad24` 仅重写SPEC并修正验收章节引用，保留AC01～AC24及功能实现前的设计提交。
+
+自助复验改进：统一命令与自动环境已补齐，本机核心复验33秒、17/17通过；本轮干净检出和完整CI状态以VERIFICATION第8节为准。额度逻辑、模型和原验收断言未改。

@@ -10,6 +10,19 @@
 - [运行与重复验证](docs/QUOTA_RUN.md)、[实际验证记录](docs/VERIFICATION.md)。
 - [提交说明](SUBMISSION.md)、[可复制的PR正文](docs/PR_BODY.md)。
 
+
+## 快速复验
+
+检出本PR分支后，在Linux／Ubuntu WSL中准备Node >=24.14.1、Wasp0.25.0，以及Docker或本机PostgreSQL服务端工具，然后执行：
+
+```sh
+npm run verify
+```
+
+自动安装依赖、建立隔离数据库、编译、执行两项类型检查和全部17项数据库验收，不需要个人 .env、数据库连接串或本机路径。完整真实HTTP与浏览器验证使用干净检出中的 `npm run verify:all`。
+
+[完整说明与失败定位](docs/QUOTA_RUN.md) · [自动复验Actions](https://github.com/Theodora-Y/task-planner-interview/actions/workflows/verify.yml) · [实际结果](docs/VERIFICATION.md)
+
 ## 环境
 
 - Node.js 24.14.1 或更新的兼容版本。

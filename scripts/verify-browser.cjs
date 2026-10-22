@@ -5,11 +5,10 @@ const path = require("node:path");
 const { randomBytes } = require("node:crypto");
 
 if (process.argv.includes("--help")) {
-  console.log("SERVER_LOG=<actual server log> [PLAYWRIGHT_MODULE_PATH=<installed playwright>] node scripts/verify-browser.cjs\nRequires an installed Playwright Chromium/Edge (BROWSER_CHANNEL defaults msedge). App at FRONTEND_URL / API_URL, defaults localhost:3000 / 3001. Credentials remain in memory; screenshots and JSON go to test-results/quota/browser.");
+  console.log("SERVER_LOG=<actual server log> [PLAYWRIGHT_MODULE_PATH=<installed playwright>] node scripts/verify-browser.cjs\nUses repository Playwright and Chromium on Linux, or Edge on Windows. App at FRONTEND_URL / API_URL, defaults localhost:3000 / 3001. Credentials remain in memory; screenshots and JSON go to test-results/quota/browser.");
   process.exit(0);
 }
-const logPath = process.env.SERVER_LOG;
-if (!logPath) throw new Error("SERVER_LOG is required");
+const logPath = process.env.SERVER_LOG || path.resolve(__dirname, "../test-results/quota/server.log");
 const frontend = process.env.FRONTEND_URL || "http://localhost:3000";
 const api = process.env.API_URL || "http://localhost:3001";
 const out = path.resolve(__dirname, "../test-results/quota/browser");
@@ -17,7 +16,7 @@ fs.mkdirSync(out, { recursive: true });
 const report = { startedAt: new Date().toISOString(), steps: [], pageErrors: [], passed: false };
 
 (async () => {
-  const browser = await chromium.launch({ channel: process.env.BROWSER_CHANNEL || "msedge", headless: true });
+  const browser = await chromium.launch({ channel: process.env.BROWSER_CHANNEL || (process.platform === "win32" ? "msedge" : undefined), headless: true });
   report.browser = "Chromium/Edge " + browser.version();
   const context = await browser.newContext({ viewport: { width: 1280, height: 1100 } });
   context.on("page", (page) => {

@@ -7,7 +7,7 @@
 | 提交人 | 郑女士 |
 | 修订日期 | 2026-10-21（北京时间） |
 | 文档状态 | 实现后工程评审与交接版；额度实现及本地验证已完成 |
-| 功能基准 | `2b46f01`；后续提交仅调整交付文档 |
+| 功能基准 | `2b46f01`；后续仅调整复验工具、测试启动适配及交付文档，额度实现不变 |
 | 原始设计 | `99cecc9`，在功能实现 `da266a9` 之前独立提交，保留于 Git 历史 |
 | 提交与 PR 信息 | [PR #3](https://github.com/bybzhwbzhh88/task-planner-interview/pull/3)；[SUBMISSION](SUBMISSION.md) |
 
@@ -177,10 +177,10 @@ T1回调错误且回滚已确认时直接返回DB_UNAVAILABLE；提交结果不�
 | D2 | [quotaService](src/demo-ai-app/quotaService.ts) | T1/T2/T3、条件状态转换、幂等结算、已存结果读取 |
 | D3 | [planService](src/demo-ai-app/planService.ts)、[operations](src/demo-ai-app/operations.ts)、[planError](src/demo-ai-app/planError.ts) | 校验、任务快照、模型及异常编排、HTTP错误映射 |
 | D4 | [DemoAppPage](src/demo-ai-app/DemoAppPage.tsx)、[App](src/client/App.tsx)、[主路由](main.wasp.ts)、[实体与操作声明](src/demo-ai-app/demo-ai-app.wasp.ts) | 身份保护、额度展示、按钮状态、刷新、结果反馈 |
-| D5 | [数据库测试](tests/quota.integration.test.ts)、[跨进程worker](tests/helpers/quota-worker.ts)、[TS加载器](tests/helpers/register-ts.mjs)、[Vitest配置](vitest.server.config.ts)、[准备隔离库](scripts/prepare-test-db.mjs)、[HTTP验证](scripts/verify-quota.mjs)、[浏览器验证](scripts/verify-browser.cjs) | 可重复事务、并发、故障及页面验收 |
+| D5 | [自动复验](scripts/verify.mjs)、[SQL客户端适配](scripts/verify-sql.mjs)、[CI](.github/workflows/verify.yml)、[数据库测试](tests/quota.integration.test.ts)、[跨进程worker](tests/helpers/quota-worker.ts)、[TS加载器](tests/helpers/register-ts.mjs)、[Vitest配置](vitest.server.config.ts)、[准备隔离库](scripts/prepare-test-db.mjs)、[HTTP验证](scripts/verify-quota.mjs)、[浏览器验证](scripts/verify-browser.cjs) | 可重复事务、并发、故障及页面验收 |
 | D6 | [运行说明](docs/QUOTA_RUN.md)、[验证记录](docs/VERIFICATION.md)、[提交说明](SUBMISSION.md) | 运行、复验、真实结果、边界及交付入口 |
 
-[模拟模型](src/demo-ai-app/mockAi.ts)、原初始化迁移和依赖锁文件保持原样；`.wasp/`为生成目录，不作为源码修改入口。
+[模拟模型](src/demo-ai-app/mockAi.ts)与原初始化迁移保持原样；复验新增固定版本Playwright开发依赖，现有依赖版本不升级；`.wasp/`为生成目录，不作为源码修改入口。
 
 ## 7. 验收标准与验证入口
 
@@ -193,9 +193,9 @@ T1回调错误且回滚已确认时直接返回DB_UNAVAILABLE；提交结果不�
 | B | [verify-browser.cjs](scripts/verify-browser.cjs) | 浏览器操作、余额显示、焦点刷新及明确标注的响应注入 |
 | C | `wasp compile`、`npx tsc --project tsconfig.src.json --noEmit`、`npx tsc --project tsconfig.wasp.json --noEmit` | 编译和两项类型检查，不替代业务验收 |
 
-完整命令、环境及数据库保护见 [QUOTA_RUN](docs/QUOTA_RUN.md)。S用独立测试库；H只读核对被测API的同一个数据库，不可误用S库。并发请求实际同时发起；统计M/ΔR须排除准备调用。B的错误响应注入不能代替S的数据库故障验证。
+推荐入口为 npm run verify；完整HTTP/浏览器为干净检出中的 npm run verify:all，自动准备隔离数据库与应用。完整命令、环境及数据库保护见 [QUOTA_RUN](docs/QUOTA_RUN.md)。S用独立测试库；H只读核对被测API的同一个数据库，不可误用S库。并发请求实际同时发起；统计M/ΔR须排除准备调用。B的错误响应注入不能代替S的数据库故障验证。
 
-既有证据：S17/17；H35场景（C=1和3各10轮、每轮5请求）；最终B15步、0页面异常；C三项退出0。H为初验结果，页面修复后未重跑，因为核心额度服务、模型、数据库及HTTP入口未变。源码基准与证据关联见 [VERIFICATION](docs/VERIFICATION.md)，本次文档改写不产生新的业务测试通过结论。原始日志及截图仅本机保存；Git内提交脱敏摘要和可执行入口。
+既有证据：S17/17；H35场景（C=1和3各10轮、每轮5请求）；最终B15步、0页面异常；C三项退出0。H为初验结果，页面修复后未重跑，因为核心额度服务、模型、数据库及HTTP入口未变。源码基准与证据关联见 [VERIFICATION](docs/VERIFICATION.md)，后续复验入口改进、实际执行与CI状态见验证记录第8节，不将未执行项写为通过。原始日志及截图仅本机保存；Git内提交脱敏摘要和可执行入口。
 
 ### 7.2 验收案例
 

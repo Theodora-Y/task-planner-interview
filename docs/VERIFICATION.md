@@ -110,3 +110,11 @@ PR正文见 [PR_BODY](PR_BODY.md)，目标与身份见 [SUBMISSION](../SUBMISSIO
 - 首次远端核对：`git ls-remote origin refs/heads/chore/original-baseline` 为 `a090375b8a898355240bb95cb7b19b5a7ece2de4`，与当时本地HEAD一致；先SPEC后代码的完整历史已推送。
 - 此后仅同步本节、SPEC、SUBMISSION与摘要中的交付状态，不改源码、测试、依赖或迁移，因此不重复业务测试。历史reviewFollowup/finalDelivery保留当时状态，本节Fork阶段记录在摘要forkDelivery，后续PR状态见prDelivery。
 - 本节完成时尚待创建PR；后续已提交 [PR #3](https://github.com/bybzhwbzhh88/task-planner-interview/pull/3)，当前交付状态统一见SUBMISSION。
+
+## 8. 自助复验入口修正（2026-10-22）
+
+此前交付虽然列出验证命令，但数据库配置、浏览器安装及服务日志路径需要接手者组合，不足以快速复验。本轮新增统一命令与自动隔离环境，不改额度业务或模拟模型。原数据库测试仅调整环境变量读取及SQL客户端启动，所有原断言保持原文。Playwright1.64.1由本机外挂改为固定开发依赖，仅新增playwright/playwright-core两个锁文件包，既有依赖版本未升级。
+
+- 本机 npm run verify：真实执行通过，自动创建/销毁独立PostgreSQL16集群，编译、两项tsc及17/17数据库测试通过，0失败/跳过，33秒。依赖已有缓存，不将此耗时写成首次安装承诺。
+- 干净检出和GitHub完整CI：本轮待执行，不引用历史HTTP/浏览器结果冒称新入口已通过。完成后在此更新实际结果与运行链接。
+- 新入口与前提统一见[QUOTA_RUN](QUOTA_RUN.md)。原始报告位于test-results/quota/verify-summary.json及分步骤日志，受Git忽略；历史验证快照继续保留。

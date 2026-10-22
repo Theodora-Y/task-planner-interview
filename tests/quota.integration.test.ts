@@ -8,7 +8,7 @@ import { createQuotaService, type QuotaHooks } from "../src/demo-ai-app/quotaSer
 import { generateMockSchedule } from "../src/demo-ai-app/mockAi";
 import { PlanError } from "../src/demo-ai-app/planError";
 
-process.loadEnvFile(".env.quota-test");
+if (!process.env.TEST_DATABASE_URL) process.loadEnvFile(".env.quota-test");
 const url = process.env.TEST_DATABASE_URL;
 if (!url || !/^[a-z][a-z0-9_]*_quota_test$/.test(new URL(url).pathname.slice(1))) {
   throw new Error("Explicit isolated TEST_DATABASE_URL ending _quota_test required");
@@ -387,7 +387,7 @@ describe("real PostgreSQL quota protocol", () => {
         const fixtureDb = new PrismaClient({ datasources: { db: { url: fixtureUrl.href } } });
         const runSql = (sql: string) => {
           const connection = new URL(fixtureUrl);
-          return spawnSync("psql", ["--no-psqlrc", "--set", "ON_ERROR_STOP=1"], {
+          return spawnSync(process.execPath, ["scripts/verify-sql.mjs"], {
             input: sql, encoding: "utf8",
             env: { ...process.env, PGHOST: connection.hostname, PGPORT: connection.port, PGUSER: decodeURIComponent(connection.username),
               PGPASSWORD: decodeURIComponent(connection.password), PGDATABASE: name },

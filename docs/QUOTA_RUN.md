@@ -1,110 +1,77 @@
-# 额度功能运行与验证
+# 自助运行与复验
 
-2026-10-21：额度功能已实现并完成本地验收。业务规则与边界见 [SPEC](../SPEC.md)，逐项实际结果见 [VERIFICATION](VERIFICATION.md)。新环境从 README 和下方仓库通用命令开始；本机环境与便捷脚本见 [BASELINE_RUN](BASELINE_RUN.md)，不要重复搭建已完成的本机环境。
+先检出 PR 的 `chore/original-baseline` 分支。复验无需作者的配置文件、数据库密码、外部脚本或浏览器安装路径。
 
-## 1. 从仓库运行与停止
+## 1. 快速复验
 
-新环境先按 [README](../README.md) 准备 Node24（最低24.14.1）、Wasp0.25.0、本地配置和依赖；在 Linux 文件系统中的项目根目录执行下列命令，不需要本机专用的 env.sh/start.sh。已有 .env 文件不要被示例覆盖。
-
-数据库可在独立终端执行 `wasp start db`，或按 README 配置自备 PostgreSQL。数据库就绪后：
+前提：Linux／Ubuntu WSL 的 Linux 文件系统，Node >=24.14.1，Wasp 0.25.0，以及可用 Docker 引擎或本机 PostgreSQL 服务端工具。首次安装 Wasp 后，在仓库根目录运行：
 
 ```sh
-wasp compile
+npm install -g @wasp.sh/wasp-cli@0.25.0
+npm run verify
+```
+
+脚本自动安装项目依赖，创建独立 PostgreSQL、编译 Wasp、执行两项 TypeScript 检查、应用现有迁移、运行原有17项数据库验收，最后停止本轮数据库。不会读取开发库连接，也不会覆盖本地 .env 文件。已装本机 PostgreSQL 时使用临时集群；否则使用官方 postgres:16 容器。Docker模式使用容器内的SQL客户端。
+
+本轮数据库使用随机端口，库名以 _quota_test 结尾。测试只清理自身fixture；自动创建的容器/集群在结束或失败时清理。下载依赖、镜像耗时取决于网络；不要把已有缓存时的运行时间当作首次安装时间。
+
+成功显示 `[verify] PASS` 并退出0；任一步失败非零退出。统一报告为 `test-results/quota/verify-summary.json`，各步骤日志及数据库报告在同目录。故障注入会产生预期错误日志，应以断言与退出码判断。
+
+## 2. 包含真实HTTP与浏览器的完整复验
+
+在**没有业务DATABASE_URL配置的干净检出**中执行：
+
+```sh
+npm run verify:all
+```
+
+它包含第1节全部检查，再自动启动连接同一隔离测试库的应用，依次执行真实HTTP35场景与浏览器15步，结束后停止本轮应用和数据库。要求3000/3001空闲，端口被占用时直接停止复验，不杀掉已有应用。检测到 .env.server 中已有业务DATABASE_URL也会拒绝启动，避免改动或误连开发环境。
+
+Playwright已固定为项目开发依赖。脚本自动下载Chromium；本地精简Linux若缺少浏览器系统库，按Playwright提示执行一次：
+
+```sh
+npx playwright install --with-deps chromium
+```
+
+GitHub CI自动安装这些系统库，不需要个人配置或仓库Secret。首次执行需要联网。浏览器验证保留原有断言；只把作者本机Edge/外挂模块路径改为可选覆盖。
+
+## 3. 自动复验与报告
+
+[GitHub Actions工作流](../.github/workflows/verify.yml)在push、PR和手动触发时运行 `npm run verify:all`，使用Node24.14.1、Wasp0.25.0、自动隔离Docker PostgreSQL和Chromium。运行记录见[Actions](https://github.com/Theodora-Y/task-planner-interview/actions/workflows/verify.yml)。
+
+CI归档统一摘要、数据库/HTTP/浏览器报告、截图及检查日志；不归档数据库配置、数据目录或应用服务日志。当前实际通过状态、对应提交和耗时统一见[验证记录](VERIFICATION.md)，不把“已写工作流”当成“CI已通过”。
+
+| 入口 | 用途 |
+| --- | --- |
+| `npm run verify` | 安装、编译、类型检查、迁移、17项真实数据库验收 |
+| `npm test` | 相同隔离准备与17项数据库验收，省略类型检查 |
+| `npm run verify:all` | 全部基础检查＋35项真实HTTP＋15步Chromium浏览器 |
+| `npm run check:types` | 已生成SDK后的两项TypeScript检查 |
+
+完整复验输出：`test-results/quota/vitest.json`、`service-observations.json`、`http.json`、`browser/report.json`。HTTP与浏览器顺序执行，正式场景统计排除准备数据调用，核对响应、余额/预占、结果增量和模型callId。
+
+## 4. 日常运行应用
+
+日常开发按[README](../README.md)配置自己的PostgreSQL和本地环境；与一次性复验数据库分开管理：
+
+```sh
 wasp db migrate-dev
-mkdir -p test-results/quota
-wasp start 2>&1 | tee test-results/quota/server.log
+npm run start:logged
 ```
 
-前台应用在当前终端 Ctrl+C 停止；重新执行最后一条命令即可再次启动。Docker开发数据库在其终端停止；自备数据库按自己的服务方式管理。首次迁移两条记录，日常重启不必重复安装或迁移。
+默认前端 http://localhost:3000、API http://localhost:3001。Ctrl+C停止应用，再次执行start:logged启动；数据库按自己的启动方式管理。生成日志固定写入仓库内 `test-results/quota/server.log`，不依赖作者目录。
 
-新增迁移为 `20261021133000_quota_reservation`；保留旧用户、任务、结果和余额，旧结果的 attempt 关联为 NULL。若历史余额小于0，迁移拒绝执行，需要先人工核实，不会自动改成0。
-
-默认前端 [localhost:3000](http://localhost:3000)，API3001；以实际启动输出为准。新注册账号3个可用额度。生成时暂占1个，成功后消费；包含 `[fail]` 的任务会明确失败并释放，删除该任务后可继续。没有充值入口。
-
-### 本机已验证安排（可选便捷方式）
-
-本机正式源码为 `/home/ying/实习小作业/task-planner-interview`，Node24.14.1、Wasp0.25.0、PostgreSQL16.15/55432，配置已存在。新Ubuntu终端可 `source /home/ying/实习小作业/env.sh`。以下外部脚本仅是本机便捷方式，不随仓库提交，也不是接手者运行的前提：
-
-```powershell
-wsl -d Ubuntu -- bash /home/ying/实习小作业/start.sh
-wsl -d Ubuntu -- bash /home/ying/实习小作业/status.sh
-wsl -d Ubuntu -- bash /home/ying/实习小作业/stop.sh
-```
-
-本机工具及原始环境证据见 BASELINE_RUN；后续复验可以使用上述既有后台服务，避免再开第二个 wasp start。
-
-## 2. 真实 PostgreSQL 服务测试（S）
-
-S/H脚本直接读取仓库根目录 `.env.server` 中的 DATABASE_URL，需填写被测API实际使用的连接；示例文件只有说明，不能当作已配置连接。使用Wasp管理的数据库时同样填入该实例的实际连接信息；不要把密码提交Git。
-
-先编译生成当前 Prisma 客户端，再创建独立测试库：
+对**已经运行的本地应用**单独验证时：
 
 ```sh
-node scripts/prepare-test-db.mjs --name task_planner_quota_test
-npx vitest run --config vitest.server.config.ts tests/quota.integration.test.ts
+npm run verify:http
+npm run verify:browser
 ```
 
-准备脚本读取本地 `.env.server`，要求数据库角色有 CREATEDB 权限。仅接受显式指定、名称以 `_quota_test` 结尾的数据库；写入受 Git 忽略、权限 0600 的 `.env.quota-test`。测试连接显式使用 TEST_DATABASE_URL，并再次检查库名。
+HTTP核对使用 .env.server 中与API相同的数据库；这两个入口不会代替你启动应用。浏览器默认读取相同server.log，Linux使用仓库Chromium；SERVER_LOG、FRONTEND_URL、API_URL、BROWSER_CHANNEL只用于非默认环境。建议接手者优先使用第2节自动隔离方式。
 
-S 覆盖真实事务、模型调用、SQL 错误回滚、提交成功后丢失应答、屏障并发、跨账号与五个独立 Node 进程。AC21 另建临时隔离库，验证旧结构升级及负余额中止迁移；最后删除这些临时库。其余测试仅清理本轮 fixture ID，不清空其他数据。
+## 5. 范围与数据保护
 
-报告位于 `test-results/quota/vitest.json`、`service-observations.json`。测试故意注入的失败会输出 `quota.settlement-unconfirmed`，以最终断言和退出码判断通过，不按 stderr 是否为空判断。
+原有[额度规则与AC01～AC24](../SPEC.md)、[实际验证](VERIFICATION.md)不变；模拟模型延迟、失败触发及日志未变。新增迁移保留历史数据，负余额时拒绝迁移。原有[prepare-test-db](../scripts/prepare-test-db.mjs)仍可用于手工维护专用测试库，不是快速复验的前置步骤。
 
-跨进程 helper 使用本项目要求的 Node 24 类型转换功能，可能显示 ExperimentalWarning；未新增运行时依赖。失败注入只在内部依赖参数中，HTTP 不提供故障开关。
-
-## 3. 真实 HTTP 验证（H）
-
-应用启动后执行：
-
-```sh
-node scripts/verify-quota.mjs \
-  --base-url http://localhost:3001 \
-  --server-log test-results/quota/server.log \
-  --rounds 10
-```
-
-第1节的通用前台命令生成上述server.log。本机既有后台服务实际日志是 `/home/ying/实习小作业/.environment/logs/app.log`，初验使用该路径；复用本机后台服务时将 --server-log 替换为它。
-
-H 使用真实注册、登录、任务和生成操作。读取 `.env.server` 的 DATABASE_URL 对自己创建的账号做只读检查；**这个连接必须与 API 连接同一个数据库**，不能拿另一个测试库核对开发 API 的账号。S 的隔离库和 H 的数据库用途不同。可用 `--database-env <env文件>` 指向另一套与被测 API 一致的配置。
-
-每个正式场景记录响应、前后可用额度/预占数、结果增量及真实模型 started/succeeded/failed 和 callId。额度 1/0 的准备调用不计入场景统计。并发请求一起创建并通过 Promise.allSettled 等待；余额 1 和 3 各重复 10 轮。
-
-执行期间不要混入人工生成请求，也不要轮转/截断指定日志。缺日志、非 JSON、超时和断言失败均非零退出。报告默认写入 `test-results/quota/http.json`。参数说明：`node scripts/verify-quota.mjs --help`。
-
-H 留下独立 `quota_*` 账号、任务和结果，以便复核；密码只保存在进程内、不写报告。S 不接触这些账号。删除测试账号或清理结果不是产品能力，本次不提供对整个开发库的清空命令。
-
-## 4. 浏览器验证（B）
-
-脚本依赖已安装的 Playwright 和 Chromium/Edge，不加入应用依赖。本机 Windows 已有工具，以下命令已实际执行：
-
-```powershell
-$env:PLAYWRIGHT_MODULE_PATH='D:\YYY\找实习\实习小作业\.environment\browser\node_modules\playwright'
-$env:SERVER_LOG='\\wsl.localhost\Ubuntu\home\ying\实习小作业\.environment\logs\app.log'
-node '\\wsl.localhost\Ubuntu\home\ying\实习小作业\task-planner-interview\scripts\verify-browser.cjs'
-```
-
-跨机器需提供自己的 Playwright 安装位置；支持 FRONTEND_URL、API_URL、BROWSER_CHANNEL。本机使用 msedge。B 与 H 不同时运行，避免日志区间混入别的模型调用。
-
-页面登录保护位于 DemoAppPage 源码中，首页与demo均使用它：认证刷新503且已有确认身份时保留日程，无身份或401/403不展示任务页（拒绝状态提供重新登录提示，避免与登录页的缓存跳转形成循环），服务端操作仍独立认证。不要重新套上会在刷新错误时卸载页面的默认包装器。
-
-B 覆盖真实注册、正常生成、明确失败、恢复、余额/按钮同步、双标签页和旧凭据直接请求，以及未登录页面跳转/API拒绝。AC24 只拦截页面 `/auth/me` 为503，放行真实生成，并通过不受页面路由拦截的 APIRequestContext 核对真实余额和结果；验证成功日程仍保留、额度读取失败提示、恢复后的余额和零新增生成。此例不会把503认证刷新伪装成服务端数据库故障。双标签页调用 bringToFront，并分发 focus 事件，保证无头窗口管理器也能复现焦点刷新路径。错误响应注入案例在名字中明确标为 injected：仅证明页面能显示保存失败、状态不明、服务故障和非 JSON 错误；不能替代 S 的数据库故障验收。
-
-报告和截图位于 `test-results/quota/browser/`；账号密码不落盘。B 留下 `browser_*`、`ui_errors_*` 测试账号。
-
-## 5. 编译与类型检查（C）
-
-```sh
-wasp compile
-npx tsc --project tsconfig.src.json --noEmit
-npx tsc --project tsconfig.wasp.json --noEmit
-```
-
-本机为避免生成目录与开发服务同时写入，先停止应用、保持数据库运行再检查，完成后用 start.sh 恢复服务。详见原始环境记录中的前台/后台进程管理方式。
-
-## 6. 故障边界与人工核对
-
-模型在数据库事务之外。T1 预占、T2 保存并确认、T3 释放均为短事务。同一个 attempt 只能从 RESERVED 进入一个终态；重复释放或提交应答丢失不会无条件返还额度。
-
-进程崩溃、模型永不返回或数据库持续不可用可能遗留 RESERVED；自动崩溃补偿在题目范围外。页面显示状态不明时不要自动重试生成，保留请求编号。人工释放前必须停止相关业务进程，核对该账号、attempt 和关联结果，再使用同一条件释放事务；不得直接加余额，也不得只按记录年龄判断。
-
-这些边界并不表示本次测试存在未结算请求。实际测试结果、未执行事项及招聘提交待办分别见 VERIFICATION 和 SUBMISSION。
+进程崩溃、数据库持续不可用可能遗留预占；自动崩溃补偿不在范围内。未知结果不要自动重试或直接加余额，人工核查前须确认没有在途请求。历史机器环境与原始启动记录保留于[BASELINE_RUN](BASELINE_RUN.md)，接手者不需要运行其中的本机便捷脚本。
